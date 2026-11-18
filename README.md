@@ -4,11 +4,12 @@
 
 Visor de archivos Markdown y texto con un diseño minimalista inspirado en Notion. Es un solo archivo HTML que funciona sin internet y no depende de librerías externas.
 
+**Úsalo en línea:** https://yefersonv5.github.io/visor-de-notas/
+
 ## Cómo usarlo
 
-1. Descarga `index.html`.
-2. Ábrelo con doble clic en tu navegador.
-3. Arrastra tus archivos a la ventana, usa **Abrir archivos** (`Ctrl O`) o pega texto (`Ctrl V`).
+1. Abre el enlace de arriba, o descarga `index.html` y ábrelo con doble clic para usarlo sin internet.
+2. Arrastra tus archivos a la ventana, usa **Abrir archivos** (`Ctrl O`) o pega texto (`Ctrl V`).
 
 ## Qué hace
 
