@@ -13,7 +13,7 @@ Visor de archivos Markdown y texto con un diseño minimalista inspirado en Notio
 
 ## Qué hace
 
-- **Escribir y escuchar** (`Ctrl E`): espacio para escribir o pegar texto y que la aplicación lo lea en voz alta. Eliges la voz y la velocidad una vez y quedan guardadas. El texto se guarda solo en el navegador, se puede copiar, guardar como nota o borrar. Mientras lee, resalta la frase actual y puedes tocar cualquier frase para leer desde ahí (`Ctrl Enter` reproduce o pausa, `Esc` detiene).
+- **Escribir y escuchar** (`Ctrl E`): espacio para escribir o pegar texto y que la aplicación lo lea en voz alta. Eliges la voz y la velocidad (de 0,5× a 4×) una vez y quedan guardadas. El texto se guarda solo en el navegador, se puede copiar, guardar como nota o borrar. Mientras lee, resalta la frase actual y puedes tocar cualquier frase para leer desde ahí (`Ctrl Enter` reproduce o pausa, `Esc` detiene).
 - **Escuchar documento**: el botón de parlante en la barra superior lee en voz alta el archivo abierto.
 
 - Markdown completo: títulos, listas anidadas, tareas, tablas, código, citas, enlaces e imágenes.

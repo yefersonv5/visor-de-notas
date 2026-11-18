@@ -221,7 +221,7 @@ kbd{font:11px var(--ui);color:var(--faint)}
 .w-field:hover{background:var(--hover)}
 .w-field select{border:0;outline:0;background:transparent;color:var(--text);font-size:13.5px;max-width:165px;cursor:pointer}
 .w-field select option,.w-field select optgroup{background:var(--pop);color:var(--text)}
-.w-field input[type=range]{width:80px;accent-color:var(--blue);cursor:pointer}
+.w-field input[type=range]{width:100px;accent-color:var(--blue);cursor:pointer}
 .w-field b{font-weight:500;color:var(--text);min-width:44px;font-variant-numeric:tabular-nums}
 .w-text{display:block;width:100%;min-height:52vh;border:0;outline:0;resize:none;background:transparent;color:var(--text);font-family:var(--font);font-size:var(--fs);line-height:1.65;padding:6px 0;overflow:hidden}
 .w-text::placeholder{color:var(--faint)}
@@ -897,7 +897,7 @@ function renderWrite(){
   <div class="w-bar">
     <button class="w-play" id="wPlay"></button>
     <label class="w-field" title="Voz"><svg viewBox="0 0 16 16"><path d="M8 2v7.5M5.5 4.5v4.5M10.5 4.5v4.5M3 6.5v1.5M13 6.5v1.5"/><path d="M5 12.5h6" opacity=".6"/></svg><select id="wVoice"></select></label>
-    <label class="w-field" title="Velocidad"><svg viewBox="0 0 16 16"><path d="M3 11a5 5 0 1110 0"/><path d="M8 11l2.5-3"/></svg><input type="range" id="wRate" min="0.5" max="2" step="0.05"><b id="wRateV"></b></label>
+    <label class="w-field" title="Velocidad"><svg viewBox="0 0 16 16"><path d="M3 11a5 5 0 1110 0"/><path d="M8 11l2.5-3"/></svg><input type="range" id="wRate" min="0.5" max="4" step="0.05"><b id="wRateV"></b></label>
     <button class="ghost" id="wTest" title="Escuchar una frase de prueba">Probar</button>
     <span class="spacer"></span>
     <button class="ghost" id="wCopy" title="Copiar el texto"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5"/></svg></button>
@@ -946,7 +946,7 @@ $('#view').addEventListener('input',e=>{
 $('#view').addEventListener('change',e=>{if(e.target.id==='wRate'){applyPrefs();if(tts.playing)speakCurrent()}});
 $('#pPlay').onclick=()=>{tts.playing?ttsPause():ttsResume()};
 $('#pStop').onclick=()=>ttsStop();
-const RATES=[0.75,0.9,1,1.15,1.25,1.5,1.75,2];
+const RATES=[0.75,1,1.25,1.5,1.75,2,2.5,3,3.5,4];
 $('#pRate').onclick=()=>{const nx=RATES.find(r=>r>prefs.ttsRate+0.001)||RATES[0];prefs.ttsRate=nx;applyPrefs();const wr=$('#wRate');if(wr){wr.value=nx;$('#wRateV').textContent=fmtRate(nx);writeMeta()}updatePlayer();if(tts.playing)speakCurrent()};
 $('#bListen').onclick=()=>ttsToggle('doc');
 addEventListener('beforeunload',()=>{if(SS)SS.cancel()});
