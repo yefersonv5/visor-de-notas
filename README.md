@@ -1,3 +1,5 @@
+<img src="icono.png" width="72" alt="Logo de Visor de notas">
+
 # Visor de notas
 
 Visor de archivos Markdown y texto con un diseño minimalista inspirado en Notion. Es un solo archivo HTML que funciona sin internet y no depende de librerías externas.
