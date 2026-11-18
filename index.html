@@ -213,13 +213,16 @@ kbd{font:11px var(--ui);color:var(--faint)}
 .totop:hover{color:var(--text)}
 
 /* ---------- Escribir y escuchar ---------- */
-.w-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 4px;padding:8px 0 12px;margin-bottom:8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
-.w-play{height:32px;padding:0 14px 0 11px;border-radius:6px;background:var(--blue);color:#fff;font-weight:500;display:inline-flex;align-items:center;gap:7px}
+.w-bar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px 4px;padding:8px 0 12px;margin-bottom:8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.w-play{flex-shrink:0;min-width:178px;justify-content:center;height:32px;padding:0 14px 0 11px;border-radius:6px;background:var(--blue);color:#fff;font-weight:500;display:inline-flex;align-items:center;gap:7px}
 .w-play:hover{background:#0077d4}
 .w-play svg{width:14px;height:14px}
-.w-field{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 8px;border-radius:6px;color:var(--muted);font-size:13px}
+.w-field{flex-shrink:0;display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 8px;border-radius:6px;color:var(--muted);font-size:13px}
 .w-field:hover{background:var(--hover)}
-.w-field select{border:0;outline:0;background:transparent;color:var(--text);font-size:13.5px;max-width:165px;cursor:pointer}
+.w-field.voice{flex:0 1 210px;min-width:90px}
+.w-field.voice select{width:100%;min-width:0;text-overflow:ellipsis}
+.w-bar .ghost,.w-bar button{flex-shrink:0}
+.w-field select{border:0;outline:0;background:transparent;color:var(--text);font-size:13.5px;max-width:200px;cursor:pointer}
 .w-field select option,.w-field select optgroup{background:var(--pop);color:var(--text)}
 .w-field input[type=range]{width:100px;accent-color:var(--blue);cursor:pointer}
 .w-field b{font-weight:500;color:var(--text);min-width:44px;font-variant-numeric:tabular-nums}
@@ -298,7 +301,7 @@ body.playing .toast{bottom:90px}
 .btn.blue:hover{background:#0077d4}
 
 @media (max-width:860px){
-  .w-field select{max-width:150px}.w-field input[type=range]{width:80px}.player{min-width:0;width:calc(100% - 24px)}
+  .w-bar{flex-wrap:wrap}.w-field select{max-width:150px}.w-field input[type=range]{width:80px}.player{min-width:0;width:calc(100% - 24px)}
   aside{position:fixed;z-index:50;top:0;bottom:0;left:0;box-shadow:var(--pop-shadow)}
   .page{padding:0 22px 30vh}
   .page-icon{margin-top:36px;font-size:48px}
@@ -911,7 +914,7 @@ function updatePlayer(){
   $('#pRate').textContent=fmtRate(prefs.ttsRate);
   const n=tts.chunks.length;
   if(tts.active){$('#pTxt').textContent=(tts.playing?'Leyendo ':'En pausa · ')+Math.min(tts.i+1,n)+' de '+n+(tts.partial?' · selección':(tts.src==='doc'&&cur?' · '+baseName(cur.name):''));$('#pBar').style.width=(n?(tts.i/n*100):0)+'%'}
-  const wp=$('#wPlay');if(wp)wp.innerHTML=(tts.active&&tts.src==='write'&&tts.playing?'<svg viewBox="0 0 16 16" style="fill:currentColor;stroke:none"><rect x="4" y="3.5" width="2.8" height="9" rx=".8"/><rect x="9.2" y="3.5" width="2.8" height="9" rx=".8"/></svg>Pausar':PLAY+(tts.active&&tts.src==='write'?'Continuar':(getSel('write').trim()?'Escuchar selección':'Escuchar')));
+  const wp=$('#wPlay');if(wp){const h=(tts.active&&tts.src==='write'&&tts.playing?'<svg viewBox="0 0 16 16" style="fill:currentColor;stroke:none"><rect x="4" y="3.5" width="2.8" height="9" rx=".8"/><rect x="9.2" y="3.5" width="2.8" height="9" rx=".8"/></svg>Pausar':PLAY+(tts.active&&tts.src==='write'?'Continuar':(getSel('write').trim()?'Escuchar selección':'Escuchar')));if(wp.dataset.h!==h){wp.innerHTML=h;wp.dataset.h=h}}
   const lb=$('#bListen');if(lb)lb.classList.toggle('on',tts.active&&tts.src==='doc');
   const r=$('#wReader');
   if(r&&tts.src==='write'){r.querySelectorAll('span[data-i]').forEach(s=>{const k=+s.dataset.i;s.classList.toggle('now',k===tts.i);s.classList.toggle('done',k<tts.i)});const now=r.querySelector('span.now');if(now&&tts.playing){const rc=now.getBoundingClientRect(),mr=$('#main').getBoundingClientRect();if(rc.top<mr.top+90||rc.bottom>mr.bottom-90)now.scrollIntoView({block:'center'})}}
@@ -937,7 +940,7 @@ function renderWrite(){
   $('#view').innerHTML=`<div class="page"><div class="page-icon">✍️</div><h1 class="page-title">Escribir y escuchar</h1><div class="page-meta" id="wMeta"></div>
   <div class="w-bar">
     <button class="w-play" id="wPlay"></button>
-    <label class="w-field" title="Voz"><svg viewBox="0 0 16 16"><path d="M8 2v7.5M5.5 4.5v4.5M10.5 4.5v4.5M3 6.5v1.5M13 6.5v1.5"/><path d="M5 12.5h6" opacity=".6"/></svg><select id="wVoice"></select></label>
+    <label class="w-field voice" title="Voz"><svg viewBox="0 0 16 16"><path d="M8 2v7.5M5.5 4.5v4.5M10.5 4.5v4.5M3 6.5v1.5M13 6.5v1.5"/><path d="M5 12.5h6" opacity=".6"/></svg><select id="wVoice"></select></label>
     <label class="w-field" title="Velocidad"><svg viewBox="0 0 16 16"><path d="M3 11a5 5 0 1110 0"/><path d="M8 11l2.5-3"/></svg><input type="range" id="wRate" min="0.5" max="4" step="0.05"><b id="wRateV"></b></label>
     <button class="ghost" id="wTest" title="Escuchar una frase de prueba">Probar</button>
     <span class="spacer"></span>
