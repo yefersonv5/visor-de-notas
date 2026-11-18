@@ -448,7 +448,7 @@ const reFence=/^ {0,3}(`{3,}|~{3,})\s*([^`\s]*)/;
 const reHead=/^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/;
 const reHr=/^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 const reQuote=/^ {0,3}>/;
-const reList=/^( *)([-*+]|\d{1,9}[.)])[ \t]+(.*)$/;
+const reList=/^( *)([-*+•–]|\d{1,9}[.)])[ \t]+(.*)$/;
 const reSep=/^ *\|? *:?-+:? *(\| *:?-+:? *)*\|? *$/;
 const ind=l=>l.match(/^ */)[0].length;
 const isTable=(a,b)=>a&&b&&a.includes('|')&&b.includes('|')&&reSep.test(b);
@@ -1105,15 +1105,26 @@ function ensureBlocks(){
   if(b&&(b.nodeType===3||(b.nodeType===1&&/^(SPAN|B|I|STRONG|EM|CODE|U|S|A|BR|FONT)$/.test(b.tagName))))document.execCommand('formatBlock',false,'p');
 }
 function blockShortcut(){
-  const b=curBlock();if(!b||b.nodeType!==1)return false;
+  let b=curBlock();if(!b||b.nodeType!==1)return false;
   if((b.tagName==='UL')&&!b.classList.contains('todo')){
     const li=curLi();if(!li||li.parentNode!==b||b.children.length!==1)return false;
     const m=textBefore(li).match(/^\[( |x|X)?\] $/);if(!m)return false;
     const r=rangeAt(li,0,m[0].length);if(r)r.deleteContents();b.classList.add('todo');if(/x/i.test(m[1]||''))li.dataset.checked='true';if(!li.textContent)li.innerHTML='<br>';placeCaret(li);return true;
   }
   if(!/^(P|DIV)$/.test(b.tagName))return false;
-  const bt=textBefore(b);let m;
-  const rules=[[/^# $/,'h1'],[/^## $/,'h2'],[/^### $/,'h3'],[/^[-*+] $/,'ul'],[/^\[( |x|X)?\] $/,'todo'],[/^[>"“] $/,'quote']];
+  let bt=textBefore(b),m;
+  const sel=getSelection();
+  const brs=[...b.querySelectorAll(':scope>br')].filter(br=>{const r=document.createRange();r.setStartAfter(br);return r.comparePoint(sel.anchorNode,sel.anchorOffset)>=0});
+  if(brs.length){
+    const last=brs[brs.length-1],r=document.createRange();r.setStartAfter(last);r.setEnd(sel.anchorNode,sel.anchorOffset);
+    const lt=r.toString().replace(/\u00A0/g,' ').replace(/\u200B/g,'');
+    if(/^([#]{1,3}|[-*+•–—]|\[( |x|X)?\]|[>"“]|\d{1,3}[.)]) $/.test(lt)){
+      const np=mk('p');while(last.nextSibling)np.appendChild(last.nextSibling);last.remove();
+      if(!b.textContent.trim()&&!b.querySelector('br'))b.innerHTML='<br>';
+      b.after(np);placeCaret(np,true);b=np;bt=lt;
+    }
+  }
+  const rules=[[/^# $/,'h1'],[/^## $/,'h2'],[/^### $/,'h3'],[/^[-*+•–—] $/,'ul'],[/^\[( |x|X)?\] $/,'todo'],[/^[>"“] $/,'quote']];
   for(const [re,type] of rules){if((m=bt.match(re))){const nb=convertBlock(b,type,bt.length);if(type==='todo'&&/x/i.test(m[1]||'')){const li=curLi();if(li)li.dataset.checked='true'}return true}}
   if((m=bt.match(/^(\d{1,3})[.)] $/))){const nb=convertBlock(b,'ol',bt.length);if(+m[1]!==1&&nb.tagName==='OL')nb.setAttribute('start',m[1]);return true}
   return false;
