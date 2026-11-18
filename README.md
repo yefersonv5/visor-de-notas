@@ -25,6 +25,18 @@ Visor de archivos Markdown y texto con un diseño minimalista inspirado en Notio
 - Abre bien archivos guardados en Windows con otra codificación (tildes y ñ).
 - Recuerda los archivos abiertos y tus ajustes en el navegador.
 
+## Sincronizar notas entre navegadores (GitHub)
+
+Las notas de **Escribir y escuchar** se pueden guardar en un repositorio privado de GitHub para tenerlas en cualquier navegador o computador.
+
+1. Crea un repositorio **privado** vacío, por ejemplo `mis-notas`.
+2. Crea una clave en GitHub > Settings > Developer settings > Personal access tokens > **Fine-grained tokens** > Generate new token:
+   - Repository access: **Only select repositories** > `mis-notas`.
+   - Permissions > Repository permissions > **Contents: Read and write**.
+3. En el visor: menú `···` > **Sincronizar notas con GitHub** (o el botón de la barra lateral), escribe `usuario/mis-notas`, pega la clave y pulsa **Conectar**.
+
+Cada nota se guarda como un archivo `.md` en la carpeta `notas/` del repositorio, con guardado automático. Desde la barra lateral puedes crear notas (＋), abrirlas, cambiarles el nombre (clic en el título) y borrarlas (doble clic en la papelera). La clave se guarda solo en el navegador donde la pegas; usa **Desconectar** en equipos compartidos.
+
 ## Atajos
 
 | Acción | Atajo |

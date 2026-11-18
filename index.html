@@ -267,6 +267,24 @@ body.playing .toast{bottom:90px}
 .keys div{display:flex;align-items:center;gap:8px}
 .keys b{min-width:64px;text-align:center;white-space:nowrap}
 .keys b{font:500 11.5px var(--mono);color:var(--muted);background:var(--hover);padding:1px 5px;border-radius:4px;margin-right:4px}
+
+.lbtns{display:flex;gap:2px}
+.label .lbtns button{width:22px;height:20px;padding:0;font-size:13px;line-height:20px;text-align:center}
+.cstate{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:5px;vertical-align:1px;background:#4dab9a}
+.cstate.pending{background:#d9a32b}.cstate.error{background:#e16259}.cstate:not(.ok):not(.pending):not(.error){background:var(--line2)}
+.file .dirty{color:#d9a32b;font-size:9px;margin-right:2px}
+.file .x.arm{display:grid;background:#e16259;color:#fff}
+.sy{font-size:9px;vertical-align:1px;margin-right:2px}.sy.o{color:#4dab9a}.sy.p{color:#d9a32b}.sy.e{color:#e16259}
+.page-title[contenteditable]{outline:none;cursor:text}
+.page-title[contenteditable]:empty::before{content:"Sin título";color:var(--faint)}
+.modal .gh{padding:20px 22px 0;display:flex;flex-direction:column;gap:12px}
+.modal .gh h3{margin:0;font-size:17px}
+.modal .gh p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5}
+.modal .gh label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted);font-weight:500}
+.modal .gh input{font-size:14px;font-weight:400;padding:8px 10px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);display:block;width:100%;outline:none}
+.modal .gh input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(35,131,226,.15)}
+.modal .gh .gh-m{min-height:18px;color:#e16259;font-size:13px}
+.modal .gh .row{margin:0 -22px;padding:10px 12px}
 .selpop{position:fixed;z-index:45;display:none;align-items:center;gap:6px;height:30px;padding:0 10px 0 8px;border-radius:7px;background:var(--pop);box-shadow:var(--pop-shadow);font-size:13px;color:var(--text);transform:translateX(-50%)}
 .selpop.show{display:inline-flex}
 .selpop:hover{background:var(--hover)}
@@ -328,6 +346,7 @@ body.playing .toast{bottom:90px}
     <button class="item" id="bPaste"><svg viewBox="0 0 16 16"><rect x="3.5" y="3" width="9" height="11" rx="1.5"/><path d="M6 3V2.2h4V3"/><path d="M6 7h4M6 9.5h4"/></svg>Pegar texto</button>
     <button class="item" id="bWrite"><svg viewBox="0 0 16 16"><path d="M10.5 2.8l2.7 2.7-7.4 7.4H3.1v-2.7z"/><path d="M9 4.3l2.7 2.7"/></svg>Escribir y escuchar<span class="k">Ctrl E</span></button>
   </div>
+  <div id="cloud"></div>
   <div class="label"><span>Archivos</span><button id="bClear">Cerrar todos</button></div>
   <div class="files" id="files"></div>
   <div class="label"><span>En esta página</span></div>
@@ -366,6 +385,7 @@ body.playing .toast{bottom:90px}
     <div class="m-div"></div>
     <button class="m-item" id="bCopy"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5"/></svg>Copiar contenido original</button>
     <button class="m-item" id="bPrint"><svg viewBox="0 0 16 16"><path d="M4.5 6V2.5h7V6"/><rect x="2" y="6" width="12" height="5.5" rx="1.5"/><path d="M4.5 9.5h7V14h-7z"/></svg>Imprimir o guardar PDF</button>
+    <button class="m-item" id="bSync"><svg viewBox="0 0 16 16"><path d="M4.5 12.5h7.2a2.8 2.8 0 00.4-5.6A4 4 0 004.4 6a3.3 3.3 0 00.1 6.5z"/></svg>Sincronizar notas con GitHub</button>
     <div class="m-foot">Ctrl O abrir · Ctrl F buscar · Ctrl V pegar</div>
   </div>
 
@@ -382,6 +402,16 @@ body.playing .toast{bottom:90px}
 <input type="file" id="fi" multiple hidden accept=".md,.markdown,.mdx,.txt,.text,.log,.csv,.tsv,.json,.yaml,.yml,.xml,.html,.htm,.css,.js,.ts,.py,.sql,.ini,.cfg,.conf,.env,.sh,.bat,.srt,.vtt,.rtf,.tex,text/*">
 <div class="overlay" id="ov"><div>Suelta los archivos para abrirlos</div></div>
 <button class="selpop" id="selPop"><svg viewBox="0 0 16 16"><path d="M2.5 6h2.2L8 3.2v9.6L4.7 10H2.5z"/><path d="M10.5 5.6a3.4 3.4 0 010 4.8M12.4 3.8a6 6 0 010 8.4"/></svg>Leer selección</button>
+<div class="modal" id="ghModal"><div class="box"><div class="gh">
+  <h3>Sincronizar notas con GitHub</h3>
+  <p>Tus notas de Escribir y escuchar se guardan como archivos .md en un repositorio privado tuyo, y aparecen en cualquier navegador donde conectes el visor.</p>
+  <label>Repositorio<input id="ghRepo" placeholder="usuario/mis-notas" autocomplete="off" spellcheck="false"></label>
+  <label>Carpeta dentro del repositorio<input id="ghFolder" placeholder="notas" autocomplete="off" spellcheck="false"></label>
+  <label>Clave de acceso (token)<input id="ghToken" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false"></label>
+  <p style="font-size:12.5px">La clave se guarda solo en este navegador y viaja únicamente a GitHub. Créala con acceso solo a este repositorio.</p>
+  <div class="gh-m" id="ghMsg"></div>
+  <div class="row"><button class="btn" id="ghOff">Desconectar</button><span class="spacer"></span><button class="btn" id="ghCancel">Cancelar</button><button class="btn blue" id="ghOk">Conectar</button></div>
+</div></div></div>
 <div class="slash" id="slash"></div>
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="box">
@@ -658,7 +688,8 @@ function addText(name,text){
 
 /* ============ Render ============ */
 function renderFiles(){
-  $('#bWrite').classList.toggle('on',view==='write');
+  $('#bWrite').classList.toggle('on',view==='write'&&!wDoc);
+  if(typeof renderCloud==='function')try{renderCloud()}catch(e){}
   const el=$('#files');
   if(!files.length){el.innerHTML='<div class="note" style="padding:3px 8px">Sin archivos abiertos</div>';return}
   el.innerHTML=files.map(f=>`<div class="file${view==='doc'&&cur&&f.id===cur.id?' on':''}" data-id="${f.id}" title="${esc(f.name)} · ${fmtSize(f.size)}"><span class="ic">${ICON(extOf(f.name))}</span><span class="nm">${esc(baseName(f.name))}</span><button class="x" data-close="${f.id}" title="Cerrar"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>`).join('');
@@ -749,7 +780,7 @@ $('#fi').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
 $('#files').onclick=e=>{
   const c=e.target.closest('[data-close]');
   if(c){e.stopPropagation();const idx=files.findIndex(f=>f.id===c.dataset.close);files.splice(idx,1);if(cur&&cur.id===c.dataset.close)cur=files[Math.min(idx,files.length-1)]||null;persist();renderAll(true);return}
-  const f=e.target.closest('.file');if(f){if(tts.src==='write')ttsStop();cur=files.find(x=>x.id===f.dataset.id);setView('doc');persist();renderAll(true);sideOff()}
+  const f=e.target.closest('.file');if(f){if(view==='write')flushEditor();if(tts.src==='write')ttsStop();cur=files.find(x=>x.id===f.dataset.id);setView('doc');persist();renderAll(true);sideOff()}
 };
 let clrT;$('#bClear').onclick=e=>{if(!files.length)return;const b=e.currentTarget;if(!b.dataset.arm){b.dataset.arm='1';b.textContent='¿Confirmar?';clearTimeout(clrT);clrT=setTimeout(()=>{delete b.dataset.arm;b.textContent='Cerrar todos'},2500);return}delete b.dataset.arm;b.textContent='Cerrar todos';files=[];cur=null;persist();renderAll(true)};
 $('#mode').onclick=e=>{const b=e.target.closest('button');if(!b||!cur)return;cur.mode=b.dataset.m;persist();renderDoc(false);const q=$('#q').value.trim();if(q)search(q)};
@@ -929,15 +960,16 @@ function showReader(){
 function hideReader(){const t=$('#wEd'),r=$('#wReader');if(!t||!r)return;r.hidden=true;t.hidden=false;t.focus()}
 function writeMeta(){
   const t=edText(),w=(t.match(/\S+/g)||[]).length,sec=Math.round(w/(155*prefs.ttsRate)*60);
-  const m=$('#wMeta');if(m)m.innerHTML=`<span>${w.toLocaleString('es-CO')} palabras</span><span>${t.length.toLocaleString('es-CO')} caracteres</span><span>≈ ${sec<60?sec+' s':Math.round(sec/60)+' min'} de audio</span><span>Se guarda solo en este navegador</span>`;
+  const m=$('#wMeta');if(m)m.innerHTML=`<span>${w.toLocaleString('es-CO')} palabras</span><span>${t.length.toLocaleString('es-CO')} caracteres</span><span>≈ ${sec<60?sec+' s':Math.round(sec/60)+' min'} de audio</span><span id="wSync">${syncLabel()}</span>`;
 }
 function openWrite(){if(tts.src==='doc')ttsStop();setView('write');renderFiles();renderDoc(false);setTimeout(()=>{const t=$('#wEd');if(t&&!tts.active){t.focus();const l=t.lastElementChild;if(l)placeCaret(l,true);markPlaceholder()}},40)}
 function renderWrite(){
-  const crumb=$('#crumb');crumb.innerHTML='<span>✍️</span><span>Escribir y escuchar</span>';
-  document.title='Escribir y escuchar · Visor de notas';
+  if(ensureDoc())return;
+  const crumb=$('#crumb');crumb.innerHTML=`<span>${wDoc?'📝':'✍️'}</span><span>${esc(wDoc?baseName(wDoc.name):'Escribir y escuchar')}</span>`;
+  document.title=(wDoc?baseName(wDoc.name):'Escribir y escuchar')+' · Visor de notas';
   $('#mode').style.visibility='hidden';$('#bListen').style.display='none';
   $('#toc').innerHTML='<div class="keys"><div><b>#</b>Título 1</div><div><b>##</b>Título 2</div><div><b>###</b>Título 3</div><div><b>-</b>Lista con viñetas</div><div><b>1.</b>Lista numerada</div><div><b>[]</b>Tarea</div><div><b>&gt;</b>Cita</div><div><b>```</b>Código</div><div><b>---</b>Divisor</div><div><b>**texto**</b>Negrita</div><div><b>*texto*</b>Cursiva</div><div><b>/</b>Menú de bloques</div><div><b>Ctrl ↵</b>Escuchar o pausar</div></div>';
-  $('#view').innerHTML=`<div class="page"><div class="page-icon">✍️</div><h1 class="page-title">Escribir y escuchar</h1><div class="page-meta" id="wMeta"></div>
+  $('#view').innerHTML=`<div class="page"><div class="page-icon">${wDoc?'📝':'✍️'}</div><h1 class="page-title" id="pTitle"${wDoc?' contenteditable="true" spellcheck="false" title="Clic para cambiar el nombre"':''}>${esc(wDoc?baseName(wDoc.name):'Escribir y escuchar')}</h1><div class="page-meta" id="wMeta"></div>
   <div class="w-bar">
     <button class="w-play" id="wPlay"></button>
     <label class="w-field voice" title="Voz"><svg viewBox="0 0 16 16"><path d="M8 2v7.5M5.5 4.5v4.5M10.5 4.5v4.5M3 6.5v1.5M13 6.5v1.5"/><path d="M5 12.5h6" opacity=".6"/></svg><select id="wVoice"></select></label>
@@ -951,6 +983,7 @@ function renderWrite(){
   <div class="doc w-ed" id="wEd" contenteditable="true" spellcheck="true"></div>
   <div class="reader" id="wReader" hidden></div></div>`;
   initEditor($('#wEd'));
+  const pt=$('#pTitle');if(wDoc){pt.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#wEd').focus()}if(e.key==='Escape'){e.preventDefault();renderTitle();$('#wEd').focus()}});pt.addEventListener('blur',()=>renameNote(pt.textContent));pt.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain').replace(/\n/g,' '))})}
   fillVoices();
   $('#wRate').value=prefs.ttsRate;$('#wRateV').textContent=fmtRate(prefs.ttsRate);
   ['keyup','mouseup'].forEach(ev=>$('#wEd').addEventListener(ev,()=>{if(!tts.active)updatePlayer()}));
@@ -976,7 +1009,7 @@ $('#view').addEventListener('click',e=>{
     const b=e.target.closest('button');
     if(!edText().trim())return;
     if(!b.dataset.arm){b.dataset.arm='1';b.classList.add('on');toast('Haz clic otra vez para borrar el texto');setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.classList.remove('on')}},2500);return}
-    ttsStop();draft='';ls.set(draftKey,'');const t=$('#wEd');t.innerHTML='<p><br></p>';writeMeta();b.classList.remove('on');delete b.dataset.arm;t.focus();placeCaret(t.firstChild);markPlaceholder();
+    ttsStop();persistDoc('');const t=$('#wEd');t.innerHTML='<p><br></p>';writeMeta();b.classList.remove('on');delete b.dataset.arm;t.focus();placeCaret(t.firstChild);markPlaceholder();
   }
   const sp=e.target.closest('#wReader span[data-i]');
   if(sp&&tts.active){tts.i=+sp.dataset.i;speakCurrent()}
@@ -993,7 +1026,7 @@ $('#pStop').onclick=()=>ttsStop();
 const RATES=[0.75,1,1.25,1.5,1.75,2,2.5,3,3.5,4];
 $('#pRate').onclick=()=>{const nx=RATES.find(r=>r>prefs.ttsRate+0.001)||RATES[0];prefs.ttsRate=nx;applyPrefs();const wr=$('#wRate');if(wr){wr.value=nx;$('#wRateV').textContent=fmtRate(nx);writeMeta()}updatePlayer();if(tts.playing)speakCurrent()};
 $('#bListen').onclick=()=>ttsToggle('doc');
-addEventListener('beforeunload',()=>{if(SS)SS.cancel();const ed=$('#wEd');if(ed){ls.set(draftKey,editorToMd(ed))}});
+addEventListener('beforeunload',()=>{if(SS)SS.cancel();const ed=$('#wEd');if(ed&&view==='write'){persistDoc(editorToMd(ed))}});
 /* ============ Editor estilo Notion (atajos Markdown en vivo) ============ */
 const mk=t=>document.createElement(t);
 function mdToEditor(md){
@@ -1213,7 +1246,7 @@ function markPlaceholder(){
 let edSaveT;
 function saveDraft(){
   const ed=edEl();if(!ed)return;
-  clearTimeout(edSaveT);edSaveT=setTimeout(()=>{draft=editorToMd(ed);ls.set(draftKey,draft)},250);
+  clearTimeout(edSaveT);edSaveT=setTimeout(()=>{persistDoc(editorToMd(ed))},250);
   writeMeta();
 }
 function edText(){const ed=edEl();return ed?ed.innerText.replace(/\u200B/g,'').trim():draft}
@@ -1314,9 +1347,214 @@ $('#main').addEventListener('scroll',hideSelPop);
 selPop.onclick=()=>{const t=getSel('doc');hideSelPop();if(t.trim())ttsStart(t,'doc',0,true)};
 
 
+/* ============ Sincronización de notas con GitHub ============ */
+const GHK='visornotas.gh',CK='visornotas.cloud',CURK='visornotas.curdoc';
+let gh=ls.get(GHK)||null;
+let cloud=ls.get(CK)||{};
+let cloudList=null,syncState='',syncErr='';
+let wDoc=ls.get(CURK)||null;
+const saveCloud=()=>ls.set(CK,cloud);
+const ghOn=()=>!!(gh&&gh.token&&gh.repo);
+const byName=(a,b)=>a.name.localeCompare(b.name,'es',{numeric:true});
+const encPath=p=>p.split('/').map(encodeURIComponent).join('/');
+const b64enc=t=>{const b=new TextEncoder().encode(t);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
+const b64dec=b=>new TextDecoder().decode(Uint8Array.from(atob((b||'').replace(/\s/g,'')),c=>c.charCodeAt(0)));
+const notePath=name=>(gh.folder?gh.folder.replace(/^\/+|\/+$/g,'')+'/':'')+name;
+const inFolder=p=>gh.folder?p.startsWith(gh.folder.replace(/^\/+|\/+$/g,'')+'/'):!p.includes('/');
+async function ghApi(path,opt={},cfg=gh){
+  let r;
+  try{r=await fetch('https://api.github.com/repos/'+cfg.repo+path,{...opt,cache:'no-store',headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})}})}
+  catch(e){const er=new Error('Sin conexión con GitHub');er.status=0;throw er}
+  if(r.status===204)return null;
+  const j=await r.json().catch(()=>null);
+  if(!r.ok){const er=new Error((j&&j.message)||('HTTP '+r.status));er.status=r.status;throw er}
+  return j;
+}
+const ghRef=()=>'?ref='+encodeURIComponent(gh.branch||'main');
+async function ghGet(path){const j=await ghApi('/contents/'+encPath(path)+ghRef());return {text:b64dec(j.content),sha:j.sha}}
+async function ghSha(path){try{return (await ghApi('/contents/'+encPath(path)+ghRef())).sha}catch(e){return null}}
+function errMsg(e){return e.status===401?'La clave de GitHub no es válida o ya venció':e.status===403?'GitHub rechazó el acceso (revisa los permisos de la clave)':e.status===404?'No encuentro el repositorio o la clave no tiene acceso a él':e.status===0?'Sin conexión: se guardará al reconectar':e.message}
+function setSync(st,e){
+  syncState=st;syncErr=e?errMsg(e):'';
+  const el=$('#wSync');if(el)el.innerHTML=syncLabel();
+  const cl=$('#cloudState');if(cl){cl.className='cstate '+st;cl.title=st==='error'?syncErr:st==='pending'?'Guardando…':'Sincronizado'}
+}
+function syncLabel(){
+  if(!ghOn()||!wDoc)return 'Se guarda solo en este navegador';
+  if(syncState==='pending')return '<span class="sy p">●</span> Guardando en GitHub…';
+  if(syncState==='error')return '<span class="sy e">●</span> '+esc(syncErr);
+  return '<span class="sy o">●</span> Guardado en GitHub';
+}
+async function ghList(){
+  if(!ghOn())return;
+  try{
+    const j=await ghApi('/contents/'+encPath(gh.folder||'')+ghRef());
+    cloudList=(Array.isArray(j)?j:[]).filter(f=>f.type==='file'&&/\.(md|markdown|txt)$/i.test(f.name)).map(f=>({name:f.name,path:f.path,sha:f.sha}));
+    if(syncState!=='pending')setSync('ok');
+  }catch(e){if(e.status===404||e.status===409)cloudList=[];else{cloudList=cloudList||[];setSync('error',e)}}
+  Object.keys(cloud).forEach(p=>{if(inFolder(p)&&!cloudList.some(f=>f.path===p)&&(cloud[p].dirty||!cloud[p].sha))cloudList.push({name:p.split('/').pop(),path:p,sha:null})});
+  cloudList.sort(byName);renderCloud();
+}
+let pushT,pushing=false;
+function scheduleCloudSave(){clearTimeout(pushT);setSync('pending');pushT=setTimeout(pushDirty,1500)}
+async function pushDirty(){
+  if(!ghOn())return;if(pushing){scheduleCloudSave();return}
+  pushing=true;
+  try{
+    for(const p of Object.keys(cloud)){
+      const c=cloud[p];if(!c||!c.dirty)continue;
+      const snap=c.text,body=sha=>JSON.stringify({message:'Actualizar '+p.split('/').pop(),content:b64enc(snap),branch:gh.branch,...(sha?{sha}:{})});
+      let j;
+      try{j=await ghApi('/contents/'+encPath(p),{method:'PUT',body:body(c.sha)})}
+      catch(e){if(e.status===409||e.status===422){j=await ghApi('/contents/'+encPath(p),{method:'PUT',body:body(await ghSha(p))})}else throw e}
+      if(cloud[p]){cloud[p].sha=j.content.sha;if(cloud[p].text===snap)cloud[p].dirty=false;saveCloud()}
+      if(cloudList&&cloud[p]){const it=cloudList.find(f=>f.path===p);if(it)it.sha=j.content.sha;else{cloudList.push({name:p.split('/').pop(),path:p,sha:j.content.sha});cloudList.sort(byName)}}
+    }
+    const left=Object.values(cloud).some(c=>c.dirty);
+    if(left)scheduleCloudSave();else setSync('ok');
+    renderCloud();
+  }catch(e){setSync('error',e);clearTimeout(pushT);pushT=setTimeout(pushDirty,e.status===0?15000:60000)}
+  finally{pushing=false}
+}
+addEventListener('online',()=>{if(ghOn())pushDirty()});
+function persistDoc(md){
+  draft=md;
+  if(wDoc&&ghOn()){
+    const c=cloud[wDoc.path]||(cloud[wDoc.path]={text:'',sha:null,dirty:false});
+    if(c.text!==md){c.text=md;c.dirty=true;c.ts=Date.now();saveCloud();scheduleCloudSave()}
+  }else ls.set(draftKey,md);
+}
+function flushEditor(){const ed=edEl();if(ed&&view==='write'){clearTimeout(edSaveT);persistDoc(editorToMd(ed))}}
+async function openNote(path,opts={}){
+  if(view==='write')flushEditor();
+  if(tts.active)ttsStop(true);
+  wDoc={path,name:path.split('/').pop()};ls.set(CURK,wDoc);
+  const c=cloud[path];draft=c?c.text:'';
+  if(cloudList&&!cloudList.some(f=>f.path===path)&&(c&&(c.dirty||c.sha)||opts.migrate)){cloudList.push({name:wDoc.name,path,sha:c&&c.sha||null});cloudList.sort(byName)}
+  setView('write');renderFiles();renderDoc(false);renderCloud();setSync(c&&c.dirty?'pending':'ok');
+  if(c&&c.dirty){scheduleCloudSave();return}
+  const before=draft;
+  try{
+    const r=await ghGet(path);
+    cloud[path]={text:r.text,sha:r.sha,dirty:false,ts:Date.now()};saveCloud();
+    const ed=edEl();
+    if(wDoc&&wDoc.path===path&&view==='write'&&(!ed||editorToMd(ed)===before)&&r.text!==before){draft=r.text;renderDoc(false)}
+  }catch(e){
+    if(e.status===404){if(opts.migrate&&opts.migrate.trim()){persistDoc(opts.migrate);const ed=edEl();if(ed&&view==='write')renderDoc(false)}}
+    else setSync('error',e);
+  }
+}
+function ensureDoc(){
+  if(!ghOn()||wDoc)return false;
+  const local=ls.get(draftKey)||'';
+  openNote(notePath('Nota rápida.md'),{migrate:local});
+  return true;
+}
+function newNote(){
+  if(!ghOn()){openGh();return}
+  const d=new Date(),pad=n=>String(n).padStart(2,'0');
+  const base='Nota '+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+'.'+pad(d.getMinutes());
+  let name=base+'.md',k=2;
+  while((cloudList||[]).some(f=>f.name===name)||cloud[notePath(name)])name=base+' ('+(k++)+').md';
+  if(view==='write')flushEditor();if(tts.active)ttsStop(true);
+  const path=notePath(name);cloud[path]={text:'',sha:null,dirty:false,ts:Date.now()};saveCloud();
+  if(cloudList){cloudList.push({name,path,sha:null});cloudList.sort(byName)}
+  wDoc={path,name};ls.set(CURK,wDoc);draft='';
+  setView('write');renderFiles();renderDoc(false);renderCloud();
+  setTimeout(()=>{const t=$('#pTitle');if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);const s=getSelection();s.removeAllRanges();s.addRange(r)}},60);
+}
+async function renameNote(raw){
+  if(!wDoc||!ghOn())return;
+  const nb=raw.replace(/[\\/:*?"<>|#\n\r]/g,'').replace(/\s+/g,' ').trim().slice(0,80);
+  if(!nb){renderTitle();return}
+  const name=nb+'.md';if(name===wDoc.name)return;
+  if((cloudList||[]).some(f=>f.name.toLowerCase()===name.toLowerCase()&&f.path!==wDoc.path)){toast('Ya existe una nota con ese nombre');renderTitle();return}
+  flushEditor();
+  const oldP=wDoc.path,newP=notePath(name),c=cloud[oldP]||{text:draft,sha:null};
+  const oldSha=c.sha;
+  cloud[newP]={text:c.text,sha:null,dirty:true,ts:Date.now()};delete cloud[oldP];saveCloud();
+  wDoc={path:newP,name};ls.set(CURK,wDoc);
+  if(cloudList){const it=cloudList.find(f=>f.path===oldP);if(it){it.name=name;it.path=newP;it.sha=null}else cloudList.push({name,path:newP,sha:null});cloudList.sort(byName)}
+  renderCloud();renderTitle();
+  await pushDirty();
+  if(oldSha){try{await ghApi('/contents/'+encPath(oldP),{method:'DELETE',body:JSON.stringify({message:'Renombrar a '+name,sha:oldSha,branch:gh.branch})})}catch(e){}}
+}
+async function deleteNote(path){
+  const c=cloud[path],it=(cloudList||[]).find(f=>f.path===path);
+  let sha=(c&&c.sha)||(it&&it.sha);
+  const del=s=>ghApi('/contents/'+encPath(path),{method:'DELETE',body:JSON.stringify({message:'Borrar '+path.split('/').pop(),sha:s,branch:gh.branch})});
+  try{if(sha){try{await del(sha)}catch(e){if(e.status===409||e.status===422){const s2=await ghSha(path);if(s2)await del(s2)}else throw e}}}
+  catch(e){if(e.status!==404){toast('No se pudo borrar: '+errMsg(e));return}}
+  delete cloud[path];saveCloud();cloudList=(cloudList||[]).filter(f=>f.path!==path);
+  if(wDoc&&wDoc.path===path){wDoc=null;ls.set(CURK,null);if(view==='write'){if(!ensureDoc()){draft=ls.get(draftKey)||'';renderDoc(false)}}}
+  renderCloud();toast('Nota borrada de GitHub');
+}
+async function refreshCurrent(){
+  if(!ghOn()||!wDoc||view!=='write')return;
+  const c=cloud[wDoc.path];if(c&&c.dirty)return;
+  try{
+    const r=await ghGet(wDoc.path);if(c&&r.sha===c.sha)return;
+    const ed=edEl();if(ed&&c&&editorToMd(ed)!==c.text)return;
+    cloud[wDoc.path]={text:r.text,sha:r.sha,dirty:false,ts:Date.now()};saveCloud();
+    if(document.activeElement===ed)return;
+    draft=r.text;renderDoc(true);toast('Nota actualizada desde GitHub');
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ghOn()){ghList();refreshCurrent()}else if(document.visibilityState==='hidden'){flushEditor();if(ghOn())pushDirty()}});
+function renderTitle(){const t=$('#pTitle');if(t)t.textContent=wDoc?baseName(wDoc.name):'Escribir y escuchar';const c=$('#crumb');if(c&&view==='write')c.innerHTML=`<span>${wDoc?'📝':'✍️'}</span><span>${esc(wDoc?baseName(wDoc.name):'Escribir y escuchar')}</span>`}
+const CLOUD_IC='<svg viewBox="0 0 16 16"><path d="M4.5 12.5h7.2a2.8 2.8 0 00.4-5.6A4 4 0 004.4 6a3.3 3.3 0 00.1 6.5z"/></svg>';
+function renderCloud(){
+  const el=$('#cloud');if(!el)return;
+  if(!ghOn()){el.innerHTML=`<div class="nav"><button class="item" id="ghConnect">${CLOUD_IC}Sincronizar con GitHub</button></div>`;return}
+  const list=cloudList;
+  el.innerHTML=`<div class="label"><span>Notas en GitHub <i id="cloudState" class="cstate ${syncState}"></i></span><span class="lbtns"><button id="ghNew" title="Nueva nota">＋</button><button id="ghRefresh" title="Actualizar lista">↻</button></span></div>
+  <div class="files" id="cloudList">${list===null?'<div class="note" style="padding:3px 8px">Cargando…</div>':!list.length?'<div class="note" style="padding:3px 8px">Aún no hay notas. Pulsa ＋</div>':list.map(f=>`<div class="file cnote${view==='write'&&wDoc&&wDoc.path===f.path?' on':''}" data-path="${esc(f.path)}" title="${esc(f.name)}"><span class="ic">📝</span><span class="nm">${esc(baseName(f.name))}</span>${cloud[f.path]&&cloud[f.path].dirty?'<span class="dirty" title="Pendiente de guardar">●</span>':''}<button class="x" data-del="${esc(f.path)}" title="Borrar nota (clic dos veces)"><svg viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9"/></svg></button></div>`).join('')}</div>`;
+}
+$('#cloud').addEventListener('click',e=>{
+  const t=e.target;
+  if(t.closest('#ghConnect')){openGh();return}
+  if(t.closest('#ghNew')){newNote();sideOff();return}
+  if(t.closest('#ghRefresh')){cloudList=null;renderCloud();ghList();refreshCurrent();return}
+  const d=t.closest('[data-del]');
+  if(d){e.stopPropagation();if(!d.dataset.arm){d.dataset.arm='1';d.classList.add('arm');toast('Haz clic otra vez para borrar la nota de GitHub');setTimeout(()=>{if(d.isConnected){delete d.dataset.arm;d.classList.remove('arm')}},2500);return}deleteNote(d.dataset.del);return}
+  const n=t.closest('.cnote');if(n){openNote(n.dataset.path);sideOff()}
+});
+/* Ventana de conexión */
+const ghModal=$('#ghModal');
+function openGh(){
+  menu.classList.remove('show');
+  $('#ghRepo').value=gh?gh.repo:'yefersonv5/mis-notas';$('#ghFolder').value=gh?gh.folder:'notas';$('#ghToken').value='';
+  $('#ghToken').placeholder=gh?'Clave guardada (escribe otra para cambiarla)':'github_pat_…';
+  $('#ghOff').style.display=gh?'':'none';$('#ghMsg').textContent='';
+  ghModal.classList.add('show');setTimeout(()=>(gh?$('#ghRepo'):$('#ghToken')).focus(),40);
+}
+$('#ghCancel').onclick=()=>ghModal.classList.remove('show');
+ghModal.onclick=e=>{if(e.target===ghModal)ghModal.classList.remove('show')};
+$('#ghOff').onclick=()=>{flushEditor();gh=null;cloud={};cloudList=null;wDoc=null;['visornotas.gh','visornotas.cloud','visornotas.curdoc'].forEach(k=>ls.set(k,null));ghModal.classList.remove('show');draft=ls.get(draftKey)||'';renderCloud();if(view==='write')renderDoc(false);toast('GitHub desconectado en este navegador')};
+$('#ghOk').onclick=async()=>{
+  const repo=$('#ghRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/+$/,'');
+  const folder=$('#ghFolder').value.trim().replace(/^\/+|\/+$/g,'');
+  const token=$('#ghToken').value.trim()||(gh&&gh.token)||'';
+  const msg=$('#ghMsg');
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){msg.textContent='Escribe el repositorio como usuario/nombre';return}
+  if(!token){msg.textContent='Pega la clave de acceso';return}
+  msg.textContent='Conectando…';
+  try{
+    const j=await ghApi('',{},{repo,token});
+    if(j.permissions&&!j.permissions.push){msg.textContent='La clave no tiene permiso de escritura en ese repositorio';return}
+    gh={repo,folder,token,branch:j.default_branch||'main'};ls.set(GHK,gh);
+    ghModal.classList.remove('show');
+    toast(j.private?'Conectado a GitHub':'Conectado. Ojo: ese repositorio es público');
+    cloudList=null;renderCloud();await ghList();
+    if(view==='write'&&!wDoc)ensureDoc();
+  }catch(e){msg.textContent=(e.status===0?'No se pudo contactar a GitHub. Si estás usando el visor dentro de Claude, ábrelo desde la página de GitHub.':errMsg(e))}
+};
+$('#ghToken').addEventListener('keydown',e=>{if(e.key==='Enter')$('#ghOk').click()});
+$('#bSync').onclick=openGh;
+
 let framed=false;try{framed=window.top!==window}catch(e){framed=true}
 if(framed)$('#bPrint').style.display='none';
-applyPrefs();renderAll(true);
+applyPrefs();renderCloud();renderAll(true);if(ghOn())ghList();
 })();
 </script>
 </body>
