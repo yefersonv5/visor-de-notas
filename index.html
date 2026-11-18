@@ -236,6 +236,10 @@ body.playing .toast{bottom:90px}
 .reader span.done{color:var(--faint)}
 .reader span.now{background:var(--mark);color:var(--text);box-shadow:0 0 0 2px var(--mark)}
 .reader-note{font:13px var(--ui);color:var(--faint);margin:0 0 12px}
+.selpop{position:fixed;z-index:45;display:none;align-items:center;gap:6px;height:30px;padding:0 10px 0 8px;border-radius:7px;background:var(--pop);box-shadow:var(--pop-shadow);font-size:13px;color:var(--text);transform:translateX(-50%)}
+.selpop.show{display:inline-flex}
+.selpop:hover{background:var(--hover)}
+.selpop svg{width:15px;height:15px;color:var(--blue)}
 .player{position:absolute;left:50%;bottom:18px;transform:translate(-50%,12px);display:flex;align-items:center;gap:6px;background:var(--pop);box-shadow:var(--pop-shadow);border-radius:12px;padding:6px 8px 6px 6px;z-index:30;opacity:0;pointer-events:none;transition:.18s;min-width:300px}
 .player.show{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
 .player .pbtn{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:var(--text)}
@@ -346,6 +350,7 @@ body.playing .toast{bottom:90px}
 
 <input type="file" id="fi" multiple hidden accept=".md,.markdown,.mdx,.txt,.text,.log,.csv,.tsv,.json,.yaml,.yml,.xml,.html,.htm,.css,.js,.ts,.py,.sql,.ini,.cfg,.conf,.env,.sh,.bat,.srt,.vtt,.rtf,.tex,text/*">
 <div class="overlay" id="ov"><div>Suelta los archivos para abrirlos</div></div>
+<button class="selpop" id="selPop"><svg viewBox="0 0 16 16"><path d="M2.5 6h2.2L8 3.2v9.6L4.7 10H2.5z"/><path d="M10.5 5.6a3.4 3.4 0 010 4.8M12.4 3.8a6 6 0 010 8.4"/></svg>Leer selección</button>
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="box">
   <input id="pName" placeholder="Sin título">
@@ -828,12 +833,12 @@ function chunkText(t){
   return out;
 }
 function fmtRate(r){return (+r).toFixed(2)+'×'}
-function ttsStart(text,src,from=0){
+function ttsStart(text,src,from=0,partial=false){
   if(!SS){toast('Tu navegador no permite lectura en voz alta');return}
   const chunks=chunkText(text);
   if(!chunks.length){toast(src==='write'?'Escribe o pega un texto primero':'No hay texto para leer');return}
   ttsStop(true);
-  Object.assign(tts,{active:true,src,chunks,i:Math.min(from,chunks.length-1)});
+  Object.assign(tts,{active:true,src,chunks,partial,i:Math.min(from,chunks.length-1)});
   if(src==='write')showReader();
   speakCurrent();
 }
@@ -857,7 +862,15 @@ function ttsStop(silent){
   updatePlayer();
   if(wasWrite&&view==='write'&&!silent)hideReader();
 }
+function getSel(src){
+  if(src==='write'){const t=$('#wText');if(t&&!t.hidden&&t.selectionEnd>t.selectionStart)return t.value.slice(t.selectionStart,t.selectionEnd);return ''}
+  const sel=window.getSelection(),d=$('#doc');
+  if(sel&&!sel.isCollapsed&&d&&d.contains(sel.anchorNode)&&d.contains(sel.focusNode))return sel.toString();
+  return '';
+}
 function ttsToggle(src){
+  const part=getSel(src);
+  if(part.trim()){ttsStart(part,src,0,true);return}
   if(tts.active&&tts.src===src){tts.playing?ttsPause():ttsResume();return}
   if(src==='write'){const t=$('#wText');ttsStart(t?t.value:draft,'write')}
   else{const d=$('#doc');ttsStart(d?d.innerText:'','doc')}
@@ -868,8 +881,8 @@ function updatePlayer(){
   $('#pPlay').innerHTML=tts.playing?PAUSE:PLAY;
   $('#pRate').textContent=fmtRate(prefs.ttsRate);
   const n=tts.chunks.length;
-  if(tts.active){$('#pTxt').textContent=(tts.playing?'Leyendo ':'En pausa · ')+Math.min(tts.i+1,n)+' de '+n+(tts.src==='doc'&&cur?' · '+baseName(cur.name):'');$('#pBar').style.width=(n?(tts.i/n*100):0)+'%'}
-  const wp=$('#wPlay');if(wp)wp.innerHTML=(tts.active&&tts.src==='write'&&tts.playing?'<svg viewBox="0 0 16 16" style="fill:currentColor;stroke:none"><rect x="4" y="3.5" width="2.8" height="9" rx=".8"/><rect x="9.2" y="3.5" width="2.8" height="9" rx=".8"/></svg>Pausar':PLAY+(tts.active&&tts.src==='write'?'Continuar':'Escuchar'));
+  if(tts.active){$('#pTxt').textContent=(tts.playing?'Leyendo ':'En pausa · ')+Math.min(tts.i+1,n)+' de '+n+(tts.partial?' · selección':(tts.src==='doc'&&cur?' · '+baseName(cur.name):''));$('#pBar').style.width=(n?(tts.i/n*100):0)+'%'}
+  const wp=$('#wPlay');if(wp)wp.innerHTML=(tts.active&&tts.src==='write'&&tts.playing?'<svg viewBox="0 0 16 16" style="fill:currentColor;stroke:none"><rect x="4" y="3.5" width="2.8" height="9" rx=".8"/><rect x="9.2" y="3.5" width="2.8" height="9" rx=".8"/></svg>Pausar':PLAY+(tts.active&&tts.src==='write'?'Continuar':(getSel('write').trim()?'Escuchar selección':'Escuchar')));
   const lb=$('#bListen');if(lb)lb.classList.toggle('on',tts.active&&tts.src==='doc');
   const r=$('#wReader');
   if(r&&tts.src==='write'){r.querySelectorAll('span[data-i]').forEach(s=>{const k=+s.dataset.i;s.classList.toggle('now',k===tts.i);s.classList.toggle('done',k<tts.i)});const now=r.querySelector('span.now');if(now&&tts.playing){const rc=now.getBoundingClientRect(),mr=$('#main').getBoundingClientRect();if(rc.top<mr.top+90||rc.bottom>mr.bottom-90)now.scrollIntoView({block:'center'})}}
@@ -878,7 +891,7 @@ function showReader(){
   const t=$('#wText'),r=$('#wReader');if(!t||!r)return;
   let html='',lastP=-1;
   tts.chunks.forEach((c,k)=>{if(c.p!==lastP){if(lastP>=0)html+='</p>';html+='<p>';lastP=c.p}html+=`<span data-i="${k}">${esc(c.t)}</span> `});
-  r.innerHTML='<div class="reader-note">Modo lectura · toca una frase para leer desde ahí · Esc o ■ para volver a editar</div>'+html+'</p>';
+  r.innerHTML='<div class="reader-note">'+(tts.partial?'Leyendo solo la selección · ':'')+'Modo lectura · toca una frase para leer desde ahí · Esc o ■ para volver a editar</div>'+html+'</p>';
   t.hidden=true;r.hidden=false;
 }
 function hideReader(){const t=$('#wText'),r=$('#wReader');if(!t||!r)return;r.hidden=true;t.hidden=false;autosize(t);t.focus()}
@@ -909,6 +922,7 @@ function renderWrite(){
   const t=$('#wText');t.value=draft;
   fillVoices();
   $('#wRate').value=prefs.ttsRate;$('#wRateV').textContent=fmtRate(prefs.ttsRate);
+  ['select','keyup','mouseup'].forEach(ev=>t.addEventListener(ev,()=>{if(!tts.active)updatePlayer()}));
   let svT;t.addEventListener('input',()=>{draft=t.value;autosize(t);writeMeta();clearTimeout(svT);svT=setTimeout(()=>ls.set(draftKey,draft),300)});
   requestAnimationFrame(()=>autosize(t));
   writeMeta();updatePlayer();
@@ -950,6 +964,25 @@ const RATES=[0.75,1,1.25,1.5,1.75,2,2.5,3,3.5,4];
 $('#pRate').onclick=()=>{const nx=RATES.find(r=>r>prefs.ttsRate+0.001)||RATES[0];prefs.ttsRate=nx;applyPrefs();const wr=$('#wRate');if(wr){wr.value=nx;$('#wRateV').textContent=fmtRate(nx);writeMeta()}updatePlayer();if(tts.playing)speakCurrent()};
 $('#bListen').onclick=()=>ttsToggle('doc');
 addEventListener('beforeunload',()=>{if(SS)SS.cancel()});
+['#bListen','#pPlay','#selPop'].forEach(q=>$(q).addEventListener('mousedown',e=>e.preventDefault()));
+$('#view').addEventListener('mousedown',e=>{if(e.target.closest('#wPlay'))e.preventDefault()});
+const selPop=$('#selPop');
+function hideSelPop(){selPop.classList.remove('show')}
+function checkSelPop(){
+  if(view!=='doc'){hideSelPop();return}
+  const sel=window.getSelection(),d=$('#doc');
+  if(!sel||sel.isCollapsed||!d||!d.contains(sel.anchorNode)||!sel.toString().trim()){hideSelPop();return}
+  const r=sel.getRangeAt(0).getBoundingClientRect();if(!r.width&&!r.height){hideSelPop();return}
+  let top=r.bottom+8;if(top>innerHeight-50)top=r.top-38;
+  selPop.style.top=Math.max(8,top)+'px';selPop.style.left=Math.min(Math.max(70,r.left+r.width/2),innerWidth-70)+'px';
+  selPop.classList.add('show');
+}
+document.addEventListener('mouseup',()=>setTimeout(checkSelPop,10));
+document.addEventListener('keyup',e=>{if(e.shiftKey||e.key==='Shift')checkSelPop()});
+let selT;document.addEventListener('selectionchange',()=>{clearTimeout(selT);selT=setTimeout(()=>{const s=window.getSelection();if(!s||s.isCollapsed)hideSelPop();if(view==='write'&&!tts.active)updatePlayer()},60)});
+$('#main').addEventListener('scroll',hideSelPop);
+selPop.onclick=()=>{const t=getSel('doc');hideSelPop();if(t.trim())ttsStart(t,'doc',0,true)};
+
 
 let framed=false;try{framed=window.top!==window}catch(e){framed=true}
 if(framed)$('#bPrint').style.display='none';
