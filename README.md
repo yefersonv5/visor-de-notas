@@ -13,6 +13,9 @@ Visor de archivos Markdown y texto con un diseño minimalista inspirado en Notio
 
 ## Qué hace
 
+- **Escribir y escuchar** (`Ctrl E`): espacio para escribir o pegar texto y que la aplicación lo lea en voz alta. Eliges la voz y la velocidad una vez y quedan guardadas. El texto se guarda solo en el navegador, se puede copiar, guardar como nota o borrar. Mientras lee, resalta la frase actual y puedes tocar cualquier frase para leer desde ahí (`Ctrl Enter` reproduce o pausa, `Esc` detiene).
+- **Escuchar documento**: el botón de parlante en la barra superior lee en voz alta el archivo abierto.
+
 - Markdown completo: títulos, listas anidadas, tareas, tablas, código, citas, enlaces e imágenes.
 - Compatible con Obsidian: propiedades YAML, cuadros `> [!NOTE]`, `==resaltado==` y enlaces `[[Nota]]` entre archivos abiertos.
 - Compatible con Pandoc: etiquetas `<badge>`, marcas `{=html}`, `[texto]{.underline}` y `[texto]{.mark}`.
@@ -28,4 +31,7 @@ Visor de archivos Markdown y texto con un diseño minimalista inspirado en Notio
 | Abrir archivos | `Ctrl O` |
 | Buscar | `Ctrl F` |
 | Pegar texto | `Ctrl V` |
+| Escribir y escuchar | `Ctrl E` |
+| Escuchar o pausar (en Escribir y escuchar) | `Ctrl Enter` |
+| Detener lectura | `Esc` |
 | Mostrar u ocultar barra lateral | `Ctrl \` |
