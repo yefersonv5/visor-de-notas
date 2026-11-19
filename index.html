@@ -851,6 +851,7 @@ addEventListener('keydown',e=>{
   if(mod&&k==='o'){e.preventDefault();$('#fi').click()}
   else if(mod&&k==='f'){e.preventDefault();openSearch()}
   else if(mod&&k==='e'){e.preventDefault();openWrite()}
+  else if(mod&&k==='s'&&view==='write'){e.preventDefault();saveNow()}
   else if(mod&&e.key==='Enter'&&view==='write'){e.preventDefault();ttsToggle('write')}
   else if(mod&&k==='\\'){e.preventDefault();prefs.side=!prefs.side;applyPrefs()}
   else if(e.key==='Escape'){if(tts.active){ttsStop()}else if(modal.classList.contains('show'))modal.classList.remove('show');else if(menu.classList.contains('show'))menu.classList.remove('show')}
@@ -979,7 +980,7 @@ function renderWrite(){
     <button class="ghost" id="wTest" title="Escuchar una frase de prueba">Probar</button>
     <span class="spacer"></span>
     <button class="ghost" id="wCopy" title="Copiar el texto"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5"/></svg></button>
-    <button class="ghost" id="wSave" title="Guardar como nota en Archivos"><svg viewBox="0 0 16 16"><path d="M3 2.5h7.5L13 5v8.5H3z"/><path d="M5.5 2.5v3h4v-3M5.5 13.5V9.5h5v4"/></svg></button>
+    <button class="ghost" id="wSave" title="Guardar ahora en la carpeta (Ctrl S)"><svg viewBox="0 0 16 16"><path d="M3 2.5h7.5L13 5v8.5H3z"/><path d="M5.5 2.5v3h4v-3M5.5 13.5V9.5h5v4"/></svg></button>
     <button class="ghost" id="wClear" title="Borrar el texto (clic dos veces)"><svg viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9"/></svg></button>
   </div>
   <div class="doc w-ed" id="wEd" contenteditable="true" spellcheck="true"></div>
@@ -998,15 +999,7 @@ $('#view').addEventListener('click',e=>{
   if(id==='wPlay')ttsToggle('write');
   else if(id==='wTest'){if(!SS){toast('Tu navegador no permite lectura en voz alta');return}ttsStop(true);hideReader();const v=pickVoice(),u=new SpeechSynthesisUtterance('Hola, así suena esta voz a esta velocidad.');if(v){u.voice=v;u.lang=v.lang}u.rate=prefs.ttsRate;SS.cancel();SS.speak(u)}
   else if(id==='wCopy'){copyRich()}
-  else if(id==='wSave'){
-    {const ed=$('#wEd');if(ed){clearTimeout(edSaveT);draft=editorToMd(ed);ls.set(draftKey,draft)}}
-    if(!draft.trim()){toast('No hay texto para guardar');return}
-    let first=(draft.trim().split('\n')[0]||'').replace(/[#*>`_\\/:?"<>|]/g,'').trim();
-    if(first.length>42){first=first.slice(0,42);const sp=first.lastIndexOf(' ');if(sp>20)first=first.slice(0,sp)}
-    first=first.replace(/[ ,.;:]+$/,'')||'Nota';
-    let name=first+'.md',k=2;while(files.some(f=>f.name===name))name=first+' ('+(k++)+').md';
-    files.push({id:Date.now().toString(36),name,size:new Blob([draft]).size,text:draft,mode:'fmt'});persist();renderFiles();toast('Guardada en Archivos');
-  }
+  else if(id==='wSave'){saveNow()}
   else if(id==='wClear'){
     const b=e.target.closest('button');
     if(!edText().trim())return;
@@ -1628,6 +1621,22 @@ $('#ghOk').onclick=async()=>{
   }catch(e){msg.textContent=(e.status===0?'No se pudo contactar a GitHub. Si estás usando el visor dentro de Claude, ábrelo desde la página de GitHub.':errMsg(e))}
 };
 $('#ghToken').addEventListener('keydown',e=>{if(e.key==='Enter')$('#ghOk').click()});
+
+async function saveNow(){
+  const ed=edEl();
+  if(!syncOn()){
+    if(ed){clearTimeout(edSaveT);persistDoc(editorToMd(ed))}
+    if(!('showDirectoryPicker' in window)){toast('Para guardar en una carpeta usa Chrome o Edge en el computador');return}
+    toast('Elige la carpeta donde se guardarán tus notas');
+    await pickFolder();return;
+  }
+  if(!wDoc){ensureDoc();return}
+  flushEditor();
+  if(sync.kind==='fs'&&!ready()){await reconnectFolder();if(!ready())return}
+  clearTimeout(pushT);await pushDirty();
+  if(syncState==='ok'){const c=cloud[wDoc.path];if(c&&!c.sha&&!c.text.trim()){toast('La nota está vacía');return}toast('Guardado en '+where()+': '+wDoc.name)}
+  else if(syncState==='error')toast(syncErr);
+}
 $('#bSync').onclick=pickFolder;
 $('#bSyncGh').onclick=openGh;
 $('#bSyncOff').onclick=disconnectSync;
