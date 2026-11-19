@@ -41,7 +41,9 @@ svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 ::selection{background:rgba(35,131,226,.28)}
 
 /* ---------- Barra lateral ---------- */
-aside{width:248px;flex-shrink:0;background:var(--side);display:flex;flex-direction:column;min-height:0;transition:margin .2s ease}
+aside{width:248px;flex-shrink:0;background:var(--side);display:flex;flex-direction:column;min-height:0;overflow-y:auto;overflow-x:hidden;transition:margin .2s ease;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+aside::-webkit-scrollbar{width:8px}aside::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}aside::-webkit-scrollbar-track{background:transparent}
+aside>.ws{position:sticky;top:0;background:var(--side);z-index:2;margin:0;padding:14px 16px 10px}
 aside.hidden{margin-left:-248px}
 .ws{display:flex;align-items:center;gap:8px;margin:8px 8px 4px;padding:6px 8px;border-radius:6px;font-weight:600;font-size:14px}
 .ws-av{width:22px;height:22px;border-radius:5px;display:block}
@@ -55,7 +57,7 @@ aside.hidden{margin-left:-248px}
 .label{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 4px;font-size:12px;font-weight:600;color:var(--faint)}
 .label button{font-size:12px;color:var(--faint);padding:0 4px;border-radius:4px;font-weight:500}
 .label button:hover{background:var(--active);color:var(--text)}
-.files{padding:0 8px;max-height:40%;overflow:auto}
+.files{padding:0 8px}
 .file{display:flex;align-items:center;gap:6px;min-height:28px;padding:3px 6px 3px 8px;border-radius:6px;cursor:pointer;color:var(--muted)}
 .file:hover{background:var(--hover)}
 .file.on{background:var(--active);color:var(--text);font-weight:500}
@@ -65,7 +67,7 @@ aside.hidden{margin-left:-248px}
 .file:hover .x{display:grid}
 .file .x:hover{background:var(--active);color:var(--text)}
 .file .x svg{width:12px;height:12px}
-.toc{flex:1;overflow:auto;padding:0 8px 20px}
+.toc{flex:none;padding:0 8px 20px}
 .toc a{display:block;padding:3px 8px;border-radius:6px;color:var(--faint);text-decoration:none;font-size:13px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .1s}
 .toc a:hover{background:var(--hover);color:var(--muted)}
 .toc a.on{color:var(--text);font-weight:500}
@@ -1559,7 +1561,7 @@ function renderCloud(){
   const el=$('#cloud');if(!el)return;
   const sel=$('#bSyncOff');if(sel)sel.style.display=sync?'':'none';
   if(!syncOn()){el.innerHTML=`<div class="nav"><button class="item" id="fsConnect">${FOLDER_IC}Conectar carpeta de notas</button></div>`;return}
-  const title=sync.kind==='fs'?'Notas · '+esc(sync.name||'carpeta'):'Notas en GitHub';
+  const title=sync.kind==='fs'?(/^notas$/i.test(sync.name||'')?'Mis notas':'Notas · '+esc(sync.name||'carpeta')):'Notas en GitHub';
   if(sync.kind==='fs'&&!ready()){el.innerHTML=`<div class="label"><span>${title} <i id="cloudState" class="cstate error"></i></span></div><div class="nav"><button class="item" id="fsReconnect">${FOLDER_IC}Reconectar carpeta</button></div><div class="note" style="padding:0 16px 4px;font-size:12px">El navegador pide permiso cada vez que abres el visor.</div>`;return}
   const list=cloudList;
   el.innerHTML=`<div class="label"><span title="${sync.kind==='fs'?'Carpeta: '+esc(sync.name||''):esc(sync.repo)}">${title} <i id="cloudState" class="cstate ${syncState}"></i></span><span class="lbtns"><button id="ghNew" title="Nueva nota">＋</button><button id="ghRefresh" title="Actualizar lista">↻</button></span></div>
