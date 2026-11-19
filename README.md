@@ -25,17 +25,19 @@ Visor de archivos Markdown y texto con un diseño minimalista inspirado en Notio
 - Abre bien archivos guardados en Windows con otra codificación (tildes y ñ).
 - Recuerda los archivos abiertos y tus ajustes en el navegador.
 
-## Sincronizar notas entre navegadores (GitHub)
+## Guardar las notas en una carpeta del PC (OneDrive o iCloud)
 
-Las notas de **Escribir y escuchar** se pueden guardar en un repositorio privado de GitHub para tenerlas en cualquier navegador o computador.
+Las notas de **Escribir y escuchar** se pueden guardar como archivos `.md` en una carpeta de tu computador. Si esa carpeta está dentro de OneDrive o iCloud Drive, las notas se sincronizan solas con tus otros equipos.
 
-1. Crea un repositorio **privado** vacío, por ejemplo `mis-notas`.
-2. Crea una clave en GitHub > Settings > Developer settings > Personal access tokens > **Fine-grained tokens** > Generate new token:
-   - Repository access: **Only select repositories** > `mis-notas`.
-   - Permissions > Repository permissions > **Contents: Read and write**.
-3. En el visor: menú `···` > **Sincronizar notas con GitHub** (o el botón de la barra lateral), escribe `usuario/mis-notas`, pega la clave y pulsa **Conectar**.
+1. Abre el visor en **Chrome o Edge de computador** (desde la página de GitHub Pages o el archivo descargado).
+2. En la barra lateral pulsa **Conectar carpeta de notas** y elige o crea una carpeta, por ejemplo `OneDrive/Notas`.
+3. Acepta el permiso para ver y editar archivos.
 
-Cada nota se guarda como un archivo `.md` en la carpeta `notas/` del repositorio, con guardado automático. Desde la barra lateral puedes crear notas (＋), abrirlas, cambiarles el nombre (clic en el título) y borrarlas (doble clic en la papelera). La clave se guarda solo en el navegador donde la pegas; usa **Desconectar** en equipos compartidos.
+Cada nota es un archivo `.md` en esa carpeta y se guarda sola mientras escribes. Desde la barra lateral puedes crear notas (＋), abrirlas, renombrarlas (clic en el título) y borrarlas (doble clic en la papelera). Por seguridad, el navegador vuelve a pedir permiso cada vez que abres el visor: pulsa **Reconectar carpeta**. Si el archivo cambia en otro equipo, el visor trae la versión nueva al volver a la pestaña.
+
+### Opción alternativa: GitHub
+
+En el menú `···` > **Sincronizar con GitHub** puedes guardar las notas en un repositorio **privado** con una clave de acceso (fine-grained token con permiso *Contents: Read and write* solo sobre ese repositorio). Sirve en equipos donde no tienes OneDrive.
 
 ## Atajos
 

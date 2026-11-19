@@ -385,7 +385,9 @@ body.playing .toast{bottom:90px}
     <div class="m-div"></div>
     <button class="m-item" id="bCopy"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5"/></svg>Copiar contenido original</button>
     <button class="m-item" id="bPrint"><svg viewBox="0 0 16 16"><path d="M4.5 6V2.5h7V6"/><rect x="2" y="6" width="12" height="5.5" rx="1.5"/><path d="M4.5 9.5h7V14h-7z"/></svg>Imprimir o guardar PDF</button>
-    <button class="m-item" id="bSync"><svg viewBox="0 0 16 16"><path d="M4.5 12.5h7.2a2.8 2.8 0 00.4-5.6A4 4 0 004.4 6a3.3 3.3 0 00.1 6.5z"/></svg>Sincronizar notas con GitHub</button>
+    <button class="m-item" id="bSync"><svg viewBox="0 0 16 16"><path d="M2 4.5a1 1 0 011-1h3.2l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>Elegir carpeta de notas</button>
+    <button class="m-item" id="bSyncGh"><svg viewBox="0 0 16 16"><path d="M4.5 12.5h7.2a2.8 2.8 0 00.4-5.6A4 4 0 004.4 6a3.3 3.3 0 00.1 6.5z"/></svg>Sincronizar con GitHub</button>
+    <button class="m-item" id="bSyncOff" style="display:none"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>Desconectar notas</button>
     <div class="m-foot">Ctrl O abrir · Ctrl F buscar · Ctrl V pegar</div>
   </div>
 
@@ -1347,21 +1349,38 @@ $('#main').addEventListener('scroll',hideSelPop);
 selPop.onclick=()=>{const t=getSel('doc');hideSelPop();if(t.trim())ttsStart(t,'doc',0,true)};
 
 
-/* ============ Sincronización de notas con GitHub ============ */
-const GHK='visornotas.gh',CK='visornotas.cloud',CURK='visornotas.curdoc';
-let gh=ls.get(GHK)||null;
+/* ============ Sincronización de notas: carpeta del PC (OneDrive / iCloud) o GitHub ============ */
+const SK='visornotas.sync',CK='visornotas.cloud',CURK='visornotas.curdoc';
+let sync=ls.get(SK)||(ls.get('visornotas.gh')?Object.assign({kind:'gh'},ls.get('visornotas.gh')):null);
 let cloud=ls.get(CK)||{};
 let cloudList=null,syncState='',syncErr='';
 let wDoc=ls.get(CURK)||null;
+let dirH=null,fsReady=false;
 const saveCloud=()=>ls.set(CK,cloud);
-const ghOn=()=>!!(gh&&gh.token&&gh.repo);
+const syncOn=()=>!!(sync&&(sync.kind==='fs'||(sync.token&&sync.repo)));
+const ready=()=>!!(sync&&(sync.kind==='gh'||(fsReady&&dirH)));
 const byName=(a,b)=>a.name.localeCompare(b.name,'es',{numeric:true});
 const encPath=p=>p.split('/').map(encodeURIComponent).join('/');
 const b64enc=t=>{const b=new TextEncoder().encode(t);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
 const b64dec=b=>new TextDecoder().decode(Uint8Array.from(atob((b||'').replace(/\s/g,'')),c=>c.charCodeAt(0)));
-const notePath=name=>(gh.folder?gh.folder.replace(/^\/+|\/+$/g,'')+'/':'')+name;
-const inFolder=p=>gh.folder?p.startsWith(gh.folder.replace(/^\/+|\/+$/g,'')+'/'):!p.includes('/');
-async function ghApi(path,opt={},cfg=gh){
+const ghFolder=()=>(sync.folder||'').replace(/^\/+|\/+$/g,'');
+const notePath=name=>sync.kind==='gh'&&ghFolder()?ghFolder()+'/'+name:name;
+const inFolder=p=>sync.kind==='gh'&&ghFolder()?p.startsWith(ghFolder()+'/'):!p.includes('/');
+const NOTE_RE=/\.(md|markdown|txt)$/i;
+/* IndexedDB para recordar la carpeta elegida */
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('visornotas',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbGet(k){const db=await idb();return new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+async function idbSet(k,v){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+/* Backend carpeta */
+const fsErr=e=>{if(e&&e.name==='NotFoundError')e.status=404;else if(e&&(e.name==='NotAllowedError'||e.name==='SecurityError'))e.status=-2;else if(e&&e.status===undefined)e.status=-3;return e};
+const FS={
+  async list(){const out=[];try{for await(const [name,h] of dirH.entries()){if(h.kind==='file'&&NOTE_RE.test(name)&&!name.startsWith('.')&&!name.startsWith('~')){const f=await h.getFile();out.push({name,path:name,sha:f.lastModified+':'+f.size})}}}catch(e){throw fsErr(e)}return out},
+  async get(p){try{const f=await (await dirH.getFileHandle(p)).getFile();return {text:await f.text(),sha:f.lastModified+':'+f.size}}catch(e){throw fsErr(e)}},
+  async put(p,text){try{const h=await dirH.getFileHandle(p,{create:true}),w=await h.createWritable();await w.write(text);await w.close();const f=await h.getFile();return f.lastModified+':'+f.size}catch(e){throw fsErr(e)}},
+  async del(p){try{await dirH.removeEntry(p)}catch(e){throw fsErr(e)}}
+};
+/* Backend GitHub */
+async function ghApi(path,opt={},cfg=sync){
   let r;
   try{r=await fetch('https://api.github.com/repos/'+cfg.repo+path,{...opt,cache:'no-store',headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})}})}
   catch(e){const er=new Error('Sin conexión con GitHub');er.status=0;throw er}
@@ -1370,56 +1389,68 @@ async function ghApi(path,opt={},cfg=gh){
   if(!r.ok){const er=new Error((j&&j.message)||('HTTP '+r.status));er.status=r.status;throw er}
   return j;
 }
-const ghRef=()=>'?ref='+encodeURIComponent(gh.branch||'main');
-async function ghGet(path){const j=await ghApi('/contents/'+encPath(path)+ghRef());return {text:b64dec(j.content),sha:j.sha}}
+const ghRef=()=>'?ref='+encodeURIComponent(sync.branch||'main');
 async function ghSha(path){try{return (await ghApi('/contents/'+encPath(path)+ghRef())).sha}catch(e){return null}}
-function errMsg(e){return e.status===401?'La clave de GitHub no es válida o ya venció':e.status===403?'GitHub rechazó el acceso (revisa los permisos de la clave)':e.status===404?'No encuentro el repositorio o la clave no tiene acceso a él':e.status===0?'Sin conexión: se guardará al reconectar':e.message}
+const GH={
+  async list(){try{const j=await ghApi('/contents/'+encPath(ghFolder())+ghRef());return (Array.isArray(j)?j:[]).filter(f=>f.type==='file'&&NOTE_RE.test(f.name)).map(f=>({name:f.name,path:f.path,sha:f.sha}))}catch(e){if(e.status===404||e.status===409)return [];throw e}},
+  async get(p){const j=await ghApi('/contents/'+encPath(p)+ghRef());return {text:b64dec(j.content),sha:j.sha}},
+  async put(p,text,sha){const body=s=>JSON.stringify({message:'Actualizar '+p.split('/').pop(),content:b64enc(text),branch:sync.branch,...(s?{sha:s}:{})});let j;try{j=await ghApi('/contents/'+encPath(p),{method:'PUT',body:body(sha)})}catch(e){if(e.status===409||e.status===422)j=await ghApi('/contents/'+encPath(p),{method:'PUT',body:body(await ghSha(p))});else throw e}return j.content.sha},
+  async del(p,sha){const d=s=>ghApi('/contents/'+encPath(p),{method:'DELETE',body:JSON.stringify({message:'Borrar '+p.split('/').pop(),sha:s,branch:sync.branch})});if(!sha)sha=await ghSha(p);if(!sha)return;try{await d(sha)}catch(e){if(e.status===409||e.status===422){const s2=await ghSha(p);if(s2)await d(s2)}else throw e}}
+};
+const B=()=>sync.kind==='fs'?FS:GH;
+function errMsg(e){
+  const st=e&&e.status;
+  if(st===-1)return 'Este navegador no permite usar carpetas (usa Chrome o Edge en el computador)';
+  if(st===-2)return sync&&sync.kind==='fs'?'Pulsa «Reconectar carpeta» en la barra lateral para guardar':'Sin permiso';
+  if(st===-3)return 'No se pudo acceder a la carpeta';
+  if(st===401)return 'La clave de GitHub no es válida o ya venció';
+  if(st===403)return 'GitHub rechazó el acceso (revisa los permisos de la clave)';
+  if(st===404)return sync&&sync.kind==='fs'?'No se encontró el archivo':'No encuentro el repositorio o la clave no tiene acceso a él';
+  if(st===0)return 'Sin conexión: se guardará al reconectar';
+  return (e&&e.message)||'Error';
+}
+const where=()=>sync&&sync.kind==='fs'?'la carpeta '+(sync.name||''):'GitHub';
 function setSync(st,e){
   syncState=st;syncErr=e?errMsg(e):'';
   const el=$('#wSync');if(el)el.innerHTML=syncLabel();
   const cl=$('#cloudState');if(cl){cl.className='cstate '+st;cl.title=st==='error'?syncErr:st==='pending'?'Guardando…':'Sincronizado'}
 }
 function syncLabel(){
-  if(!ghOn()||!wDoc)return 'Se guarda solo en este navegador';
-  if(syncState==='pending')return '<span class="sy p">●</span> Guardando en GitHub…';
+  if(!syncOn()||!wDoc)return 'Se guarda solo en este navegador';
+  if(syncState==='pending')return '<span class="sy p">●</span> Guardando…';
   if(syncState==='error')return '<span class="sy e">●</span> '+esc(syncErr);
-  return '<span class="sy o">●</span> Guardado en GitHub';
+  return '<span class="sy o">●</span> Guardado en '+esc(where());
 }
-async function ghList(){
-  if(!ghOn())return;
-  try{
-    const j=await ghApi('/contents/'+encPath(gh.folder||'')+ghRef());
-    cloudList=(Array.isArray(j)?j:[]).filter(f=>f.type==='file'&&/\.(md|markdown|txt)$/i.test(f.name)).map(f=>({name:f.name,path:f.path,sha:f.sha}));
-    if(syncState!=='pending')setSync('ok');
-  }catch(e){if(e.status===404||e.status===409)cloudList=[];else{cloudList=cloudList||[];setSync('error',e)}}
+async function listNotes(){
+  if(!syncOn()||!ready())return;
+  try{cloudList=await B().list();if(syncState!=='pending')setSync('ok')}
+  catch(e){cloudList=cloudList||[];setSync('error',e);if(e.status===-2&&sync.kind==='fs'){fsReady=false;renderCloud();return}}
   Object.keys(cloud).forEach(p=>{if(inFolder(p)&&!cloudList.some(f=>f.path===p)&&(cloud[p].dirty||!cloud[p].sha))cloudList.push({name:p.split('/').pop(),path:p,sha:null})});
   cloudList.sort(byName);renderCloud();
 }
 let pushT,pushing=false;
-function scheduleCloudSave(){clearTimeout(pushT);setSync('pending');pushT=setTimeout(pushDirty,1500)}
+function scheduleCloudSave(){clearTimeout(pushT);setSync('pending');pushT=setTimeout(pushDirty,sync&&sync.kind==='fs'?700:1500)}
 async function pushDirty(){
-  if(!ghOn())return;if(pushing){scheduleCloudSave();return}
+  if(!syncOn())return;
+  if(!ready()){if(Object.values(cloud).some(c=>c.dirty))setSync('error',{status:-2});return}
+  if(pushing){scheduleCloudSave();return}
   pushing=true;
   try{
     for(const p of Object.keys(cloud)){
       const c=cloud[p];if(!c||!c.dirty)continue;
-      const snap=c.text,body=sha=>JSON.stringify({message:'Actualizar '+p.split('/').pop(),content:b64enc(snap),branch:gh.branch,...(sha?{sha}:{})});
-      let j;
-      try{j=await ghApi('/contents/'+encPath(p),{method:'PUT',body:body(c.sha)})}
-      catch(e){if(e.status===409||e.status===422){j=await ghApi('/contents/'+encPath(p),{method:'PUT',body:body(await ghSha(p))})}else throw e}
-      if(cloud[p]){cloud[p].sha=j.content.sha;if(cloud[p].text===snap)cloud[p].dirty=false;saveCloud()}
-      if(cloudList&&cloud[p]){const it=cloudList.find(f=>f.path===p);if(it)it.sha=j.content.sha;else{cloudList.push({name:p.split('/').pop(),path:p,sha:j.content.sha});cloudList.sort(byName)}}
+      const snap=c.text,sha=await B().put(p,snap,c.sha);
+      if(cloud[p]){cloud[p].sha=sha;if(cloud[p].text===snap)cloud[p].dirty=false;saveCloud()}
+      if(cloudList&&cloud[p]){const it=cloudList.find(f=>f.path===p);if(it)it.sha=sha;else{cloudList.push({name:p.split('/').pop(),path:p,sha});cloudList.sort(byName)}}
     }
-    const left=Object.values(cloud).some(c=>c.dirty);
-    if(left)scheduleCloudSave();else setSync('ok');
+    if(Object.values(cloud).some(c=>c.dirty))scheduleCloudSave();else setSync('ok');
     renderCloud();
-  }catch(e){setSync('error',e);clearTimeout(pushT);pushT=setTimeout(pushDirty,e.status===0?15000:60000)}
+  }catch(e){setSync('error',e);if(e.status===-2&&sync.kind==='fs'){fsReady=false;renderCloud()}else{clearTimeout(pushT);pushT=setTimeout(pushDirty,e.status===0?15000:60000)}}
   finally{pushing=false}
 }
-addEventListener('online',()=>{if(ghOn())pushDirty()});
+addEventListener('online',()=>{if(syncOn())pushDirty()});
 function persistDoc(md){
   draft=md;
-  if(wDoc&&ghOn()){
+  if(wDoc&&syncOn()){
     const c=cloud[wDoc.path]||(cloud[wDoc.path]={text:'',sha:null,dirty:false});
     if(c.text!==md){c.text=md;c.dirty=true;c.ts=Date.now();saveCloud();scheduleCloudSave()}
   }else ls.set(draftKey,md);
@@ -1433,25 +1464,25 @@ async function openNote(path,opts={}){
   if(cloudList&&!cloudList.some(f=>f.path===path)&&(c&&(c.dirty||c.sha)||opts.migrate)){cloudList.push({name:wDoc.name,path,sha:c&&c.sha||null});cloudList.sort(byName)}
   setView('write');renderFiles();renderDoc(false);renderCloud();setSync(c&&c.dirty?'pending':'ok');
   if(c&&c.dirty){scheduleCloudSave();return}
+  if(!ready()){setSync('error',{status:-2});return}
   const before=draft;
   try{
-    const r=await ghGet(path);
+    const r=await B().get(path);
     cloud[path]={text:r.text,sha:r.sha,dirty:false,ts:Date.now()};saveCloud();
     const ed=edEl();
     if(wDoc&&wDoc.path===path&&view==='write'&&(!ed||editorToMd(ed)===before)&&r.text!==before){draft=r.text;renderDoc(false)}
   }catch(e){
-    if(e.status===404){if(opts.migrate&&opts.migrate.trim()){persistDoc(opts.migrate);const ed=edEl();if(ed&&view==='write')renderDoc(false)}}
+    if(e.status===404){if(opts.migrate&&opts.migrate.trim()){persistDoc(opts.migrate);if(edEl()&&view==='write')renderDoc(false)}}
     else setSync('error',e);
   }
 }
 function ensureDoc(){
-  if(!ghOn()||wDoc)return false;
-  const local=ls.get(draftKey)||'';
-  openNote(notePath('Nota rápida.md'),{migrate:local});
+  if(!syncOn()||wDoc)return false;
+  openNote(notePath('Nota rápida.md'),{migrate:ls.get(draftKey)||''});
   return true;
 }
 function newNote(){
-  if(!ghOn()){openGh();return}
+  if(!syncOn()){pickFolder();return}
   const d=new Date(),pad=n=>String(n).padStart(2,'0');
   const base='Nota '+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+'.'+pad(d.getMinutes());
   let name=base+'.md',k=2;
@@ -1464,77 +1495,121 @@ function newNote(){
   setTimeout(()=>{const t=$('#pTitle');if(t){t.focus();const r=document.createRange();r.selectNodeContents(t);const s=getSelection();s.removeAllRanges();s.addRange(r)}},60);
 }
 async function renameNote(raw){
-  if(!wDoc||!ghOn())return;
+  if(!wDoc||!syncOn())return;
   const nb=raw.replace(/[\\/:*?"<>|#\n\r]/g,'').replace(/\s+/g,' ').trim().slice(0,80);
   if(!nb){renderTitle();return}
   const name=nb+'.md';if(name===wDoc.name)return;
   if((cloudList||[]).some(f=>f.name.toLowerCase()===name.toLowerCase()&&f.path!==wDoc.path)){toast('Ya existe una nota con ese nombre');renderTitle();return}
   flushEditor();
-  const oldP=wDoc.path,newP=notePath(name),c=cloud[oldP]||{text:draft,sha:null};
-  const oldSha=c.sha;
+  const oldP=wDoc.path,newP=notePath(name),c=cloud[oldP]||{text:draft,sha:null},oldSha=c.sha;
   cloud[newP]={text:c.text,sha:null,dirty:true,ts:Date.now()};delete cloud[oldP];saveCloud();
   wDoc={path:newP,name};ls.set(CURK,wDoc);
   if(cloudList){const it=cloudList.find(f=>f.path===oldP);if(it){it.name=name;it.path=newP;it.sha=null}else cloudList.push({name,path:newP,sha:null});cloudList.sort(byName)}
   renderCloud();renderTitle();
   await pushDirty();
-  if(oldSha){try{await ghApi('/contents/'+encPath(oldP),{method:'DELETE',body:JSON.stringify({message:'Renombrar a '+name,sha:oldSha,branch:gh.branch})})}catch(e){}}
+  if(oldSha&&ready()){try{await B().del(oldP,oldSha)}catch(e){}}
 }
 async function deleteNote(path){
-  const c=cloud[path],it=(cloudList||[]).find(f=>f.path===path);
-  let sha=(c&&c.sha)||(it&&it.sha);
-  const del=s=>ghApi('/contents/'+encPath(path),{method:'DELETE',body:JSON.stringify({message:'Borrar '+path.split('/').pop(),sha:s,branch:gh.branch})});
-  try{if(sha){try{await del(sha)}catch(e){if(e.status===409||e.status===422){const s2=await ghSha(path);if(s2)await del(s2)}else throw e}}}
-  catch(e){if(e.status!==404){toast('No se pudo borrar: '+errMsg(e));return}}
+  const c=cloud[path],it=(cloudList||[]).find(f=>f.path===path),sha=(c&&c.sha)||(it&&it.sha);
+  if(sha){if(!ready()){toast(errMsg({status:-2}));return}try{await B().del(path,sha)}catch(e){if(e.status!==404){toast('No se pudo borrar: '+errMsg(e));return}}}
   delete cloud[path];saveCloud();cloudList=(cloudList||[]).filter(f=>f.path!==path);
   if(wDoc&&wDoc.path===path){wDoc=null;ls.set(CURK,null);if(view==='write'){if(!ensureDoc()){draft=ls.get(draftKey)||'';renderDoc(false)}}}
-  renderCloud();toast('Nota borrada de GitHub');
+  renderCloud();toast('Nota borrada');
 }
 async function refreshCurrent(){
-  if(!ghOn()||!wDoc||view!=='write')return;
+  if(!syncOn()||!ready()||!wDoc||view!=='write')return;
   const c=cloud[wDoc.path];if(c&&c.dirty)return;
   try{
-    const r=await ghGet(wDoc.path);if(c&&r.sha===c.sha)return;
+    const r=await B().get(wDoc.path);if(c&&r.sha===c.sha)return;
     const ed=edEl();if(ed&&c&&editorToMd(ed)!==c.text)return;
     cloud[wDoc.path]={text:r.text,sha:r.sha,dirty:false,ts:Date.now()};saveCloud();
+    if(c&&r.text===c.text)return;
     if(document.activeElement===ed)return;
-    draft=r.text;renderDoc(true);toast('Nota actualizada desde GitHub');
+    draft=r.text;renderDoc(true);toast('Nota actualizada');
   }catch(e){}
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ghOn()){ghList();refreshCurrent()}else if(document.visibilityState==='hidden'){flushEditor();if(ghOn())pushDirty()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&syncOn()){listNotes();refreshCurrent()}else if(document.visibilityState==='hidden'){flushEditor();if(syncOn())pushDirty()}});
 function renderTitle(){const t=$('#pTitle');if(t)t.textContent=wDoc?baseName(wDoc.name):'Escribir y escuchar';const c=$('#crumb');if(c&&view==='write')c.innerHTML=`<span>${wDoc?'📝':'✍️'}</span><span>${esc(wDoc?baseName(wDoc.name):'Escribir y escuchar')}</span>`}
-const CLOUD_IC='<svg viewBox="0 0 16 16"><path d="M4.5 12.5h7.2a2.8 2.8 0 00.4-5.6A4 4 0 004.4 6a3.3 3.3 0 00.1 6.5z"/></svg>';
+const FOLDER_IC='<svg viewBox="0 0 16 16"><path d="M2 4.5a1 1 0 011-1h3.2l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>';
 function renderCloud(){
   const el=$('#cloud');if(!el)return;
-  if(!ghOn()){el.innerHTML=`<div class="nav"><button class="item" id="ghConnect">${CLOUD_IC}Sincronizar con GitHub</button></div>`;return}
+  const sel=$('#bSyncOff');if(sel)sel.style.display=sync?'':'none';
+  if(!syncOn()){el.innerHTML=`<div class="nav"><button class="item" id="fsConnect">${FOLDER_IC}Conectar carpeta de notas</button></div>`;return}
+  const title=sync.kind==='fs'?'Notas · '+esc(sync.name||'carpeta'):'Notas en GitHub';
+  if(sync.kind==='fs'&&!ready()){el.innerHTML=`<div class="label"><span>${title} <i id="cloudState" class="cstate error"></i></span></div><div class="nav"><button class="item" id="fsReconnect">${FOLDER_IC}Reconectar carpeta</button></div><div class="note" style="padding:0 16px 4px;font-size:12px">El navegador pide permiso cada vez que abres el visor.</div>`;return}
   const list=cloudList;
-  el.innerHTML=`<div class="label"><span>Notas en GitHub <i id="cloudState" class="cstate ${syncState}"></i></span><span class="lbtns"><button id="ghNew" title="Nueva nota">＋</button><button id="ghRefresh" title="Actualizar lista">↻</button></span></div>
+  el.innerHTML=`<div class="label"><span title="${sync.kind==='fs'?'Carpeta: '+esc(sync.name||''):esc(sync.repo)}">${title} <i id="cloudState" class="cstate ${syncState}"></i></span><span class="lbtns"><button id="ghNew" title="Nueva nota">＋</button><button id="ghRefresh" title="Actualizar lista">↻</button></span></div>
   <div class="files" id="cloudList">${list===null?'<div class="note" style="padding:3px 8px">Cargando…</div>':!list.length?'<div class="note" style="padding:3px 8px">Aún no hay notas. Pulsa ＋</div>':list.map(f=>`<div class="file cnote${view==='write'&&wDoc&&wDoc.path===f.path?' on':''}" data-path="${esc(f.path)}" title="${esc(f.name)}"><span class="ic">📝</span><span class="nm">${esc(baseName(f.name))}</span>${cloud[f.path]&&cloud[f.path].dirty?'<span class="dirty" title="Pendiente de guardar">●</span>':''}<button class="x" data-del="${esc(f.path)}" title="Borrar nota (clic dos veces)"><svg viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9"/></svg></button></div>`).join('')}</div>`;
 }
 $('#cloud').addEventListener('click',e=>{
   const t=e.target;
-  if(t.closest('#ghConnect')){openGh();return}
+  if(t.closest('#fsConnect')){pickFolder();return}
+  if(t.closest('#fsReconnect')){reconnectFolder();return}
   if(t.closest('#ghNew')){newNote();sideOff();return}
-  if(t.closest('#ghRefresh')){cloudList=null;renderCloud();ghList();refreshCurrent();return}
+  if(t.closest('#ghRefresh')){cloudList=null;renderCloud();listNotes();refreshCurrent();return}
   const d=t.closest('[data-del]');
-  if(d){e.stopPropagation();if(!d.dataset.arm){d.dataset.arm='1';d.classList.add('arm');toast('Haz clic otra vez para borrar la nota de GitHub');setTimeout(()=>{if(d.isConnected){delete d.dataset.arm;d.classList.remove('arm')}},2500);return}deleteNote(d.dataset.del);return}
+  if(d){e.stopPropagation();if(!d.dataset.arm){d.dataset.arm='1';d.classList.add('arm');toast('Haz clic otra vez para borrar la nota');setTimeout(()=>{if(d.isConnected){delete d.dataset.arm;d.classList.remove('arm')}},2500);return}deleteNote(d.dataset.del);return}
   const n=t.closest('.cnote');if(n){openNote(n.dataset.path);sideOff()}
 });
-/* Ventana de conexión */
+function resetSync(){cloud={};saveCloud();cloudList=null;wDoc=null;ls.set(CURK,null);syncState='';fsReady=false}
+async function pickFolder(){
+  menu.classList.remove('show');
+  if(!('showDirectoryPicker' in window)){toast('Tu navegador no permite elegir carpetas. Usa Chrome o Edge en el computador.');return}
+  let h;
+  try{h=await window.showDirectoryPicker({id:'visornotas',mode:'readwrite',startIn:'documents'})}
+  catch(e){if(e.name!=='AbortError')toast(e.name==='SecurityError'?'Aquí no se puede elegir una carpeta. Abre el visor desde la página de GitHub o el archivo descargado.':'No se pudo abrir la carpeta');return}
+  try{if((await h.requestPermission({mode:'readwrite'}))!=='granted'){toast('Necesito permiso para guardar en la carpeta');return}}catch(e){}
+  flushEditor();
+  dirH=h;try{await idbSet('dir',h)}catch(e){}
+  resetSync();fsReady=true;
+  sync={kind:'fs',name:h.name};ls.set(SK,sync);ls.set('visornotas.gh',null);
+  renderCloud();await listNotes();
+  toast('Carpeta conectada: '+h.name);
+  if(view==='write')ensureDoc();else renderFiles();
+}
+async function reconnectFolder(){
+  if(!dirH){pickFolder();return}
+  try{fsReady=(await dirH.requestPermission({mode:'readwrite'}))==='granted'}catch(e){fsReady=false}
+  if(!fsReady){toast('Sin permiso no puedo guardar en la carpeta');renderCloud();return}
+  renderCloud();await listNotes();pushDirty();
+  if(view==='write'&&wDoc)refreshCurrent();
+}
+function disconnectSync(){
+  flushEditor();
+  const k=sync&&sync.kind;sync=null;ls.set(SK,null);ls.set('visornotas.gh',null);dirH=null;try{idbSet('dir',null)}catch(e){}
+  resetSync();ghModal.classList.remove('show');menu.classList.remove('show');
+  draft=ls.get(draftKey)||'';renderCloud();if(view==='write')renderDoc(false);else renderFiles();
+  toast(k==='fs'?'Carpeta desconectada en este navegador':'GitHub desconectado en este navegador');
+}
+async function initSync(){
+  renderCloud();
+  if(!sync)return;
+  if(sync.kind==='fs'){
+    if(!('showDirectoryPicker' in window)){setSync('error',{status:-1});return}
+    try{dirH=await idbGet('dir')}catch(e){dirH=null}
+    if(!dirH){renderCloud();return}
+    try{fsReady=(await dirH.queryPermission({mode:'readwrite'}))==='granted'}catch(e){fsReady=false}
+    renderCloud();
+    if(fsReady){await listNotes();pushDirty();if(view==='write'&&wDoc)refreshCurrent()}
+  }else{await listNotes();pushDirty()}
+}
+/* Ventana de conexión con GitHub (opción avanzada) */
 const ghModal=$('#ghModal');
 function openGh(){
   menu.classList.remove('show');
-  $('#ghRepo').value=gh?gh.repo:'yefersonv5/mis-notas';$('#ghFolder').value=gh?gh.folder:'notas';$('#ghToken').value='';
-  $('#ghToken').placeholder=gh?'Clave guardada (escribe otra para cambiarla)':'github_pat_…';
-  $('#ghOff').style.display=gh?'':'none';$('#ghMsg').textContent='';
-  ghModal.classList.add('show');setTimeout(()=>(gh?$('#ghRepo'):$('#ghToken')).focus(),40);
+  const g=sync&&sync.kind==='gh'?sync:null;
+  $('#ghRepo').value=g?g.repo:'yefersonv5/mis-notas';$('#ghFolder').value=g?g.folder:'notas';$('#ghToken').value='';
+  $('#ghToken').placeholder=g?'Clave guardada (escribe otra para cambiarla)':'github_pat_…';
+  $('#ghOff').style.display=g?'':'none';$('#ghMsg').textContent='';
+  ghModal.classList.add('show');setTimeout(()=>(g?$('#ghRepo'):$('#ghToken')).focus(),40);
 }
 $('#ghCancel').onclick=()=>ghModal.classList.remove('show');
 ghModal.onclick=e=>{if(e.target===ghModal)ghModal.classList.remove('show')};
-$('#ghOff').onclick=()=>{flushEditor();gh=null;cloud={};cloudList=null;wDoc=null;['visornotas.gh','visornotas.cloud','visornotas.curdoc'].forEach(k=>ls.set(k,null));ghModal.classList.remove('show');draft=ls.get(draftKey)||'';renderCloud();if(view==='write')renderDoc(false);toast('GitHub desconectado en este navegador')};
+$('#ghOff').onclick=disconnectSync;
 $('#ghOk').onclick=async()=>{
   const repo=$('#ghRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/+$/,'');
   const folder=$('#ghFolder').value.trim().replace(/^\/+|\/+$/g,'');
-  const token=$('#ghToken').value.trim()||(gh&&gh.token)||'';
+  const token=$('#ghToken').value.trim()||(sync&&sync.kind==='gh'&&sync.token)||'';
   const msg=$('#ghMsg');
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){msg.textContent='Escribe el repositorio como usuario/nombre';return}
   if(!token){msg.textContent='Pega la clave de acceso';return}
@@ -1542,19 +1617,24 @@ $('#ghOk').onclick=async()=>{
   try{
     const j=await ghApi('',{},{repo,token});
     if(j.permissions&&!j.permissions.push){msg.textContent='La clave no tiene permiso de escritura en ese repositorio';return}
-    gh={repo,folder,token,branch:j.default_branch||'main'};ls.set(GHK,gh);
+    flushEditor();
+    if(!sync||sync.kind!=='gh'||sync.repo!==repo)resetSync();
+    sync={kind:'gh',repo,folder,token,branch:j.default_branch||'main'};ls.set(SK,sync);ls.set('visornotas.gh',null);
+    dirH=null;try{idbSet('dir',null)}catch(e){}
     ghModal.classList.remove('show');
     toast(j.private?'Conectado a GitHub':'Conectado. Ojo: ese repositorio es público');
-    cloudList=null;renderCloud();await ghList();
+    cloudList=null;renderCloud();await listNotes();
     if(view==='write'&&!wDoc)ensureDoc();
   }catch(e){msg.textContent=(e.status===0?'No se pudo contactar a GitHub. Si estás usando el visor dentro de Claude, ábrelo desde la página de GitHub.':errMsg(e))}
 };
 $('#ghToken').addEventListener('keydown',e=>{if(e.key==='Enter')$('#ghOk').click()});
-$('#bSync').onclick=openGh;
+$('#bSync').onclick=pickFolder;
+$('#bSyncGh').onclick=openGh;
+$('#bSyncOff').onclick=disconnectSync;
 
 let framed=false;try{framed=window.top!==window}catch(e){framed=true}
 if(framed)$('#bPrint').style.display='none';
-applyPrefs();renderCloud();renderAll(true);if(ghOn())ghList();
+applyPrefs();renderAll(true);initSync();
 })();
 </script>
 </body>
