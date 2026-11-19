@@ -285,6 +285,16 @@ body.playing .toast{bottom:90px}
 .modal .gh input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(35,131,226,.15)}
 .modal .gh .gh-m{min-height:18px;color:#e16259;font-size:13px}
 .modal .gh .row{margin:0 -22px;padding:10px 12px}
+
+.dropzone{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:36px 24px;border:1.5px dashed var(--line2);border-radius:10px;cursor:pointer;color:var(--muted);transition:background .15s,border-color .15s;outline:none;margin-top:4px}
+.dropzone:hover,.dropzone:focus,.dropzone.over{background:var(--hover);border-color:var(--blue)}
+.dropzone.over{background:rgba(35,131,226,.08)}
+.dropzone svg{width:30px;height:30px;color:var(--faint);margin-bottom:4px}
+.dropzone b{font-size:16px;color:var(--text);font-weight:600}
+.dropzone span{font-size:13.5px;max-width:440px;line-height:1.5}
+.dropzone small{font-size:12px;color:var(--faint);margin-top:4px}
+.recent{margin-top:18px;border-top:1px solid var(--line);padding-top:10px}
+.recent-t{font-size:12px;color:var(--faint);font-weight:600;padding:4px 0 2px}
 .selpop{position:fixed;z-index:45;display:none;align-items:center;gap:6px;height:30px;padding:0 10px 0 8px;border-radius:7px;background:var(--pop);box-shadow:var(--pop-shadow);font-size:13px;color:var(--text);transform:translateX(-50%)}
 .selpop.show{display:inline-flex}
 .selpop:hover{background:var(--hover)}
@@ -342,7 +352,7 @@ body.playing .toast{bottom:90px}
 <aside id="side">
   <div class="ws"><img class="ws-av" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%23191919%22/%3E%3Cpath%20d%3D%22M20%2012h17l11%2011v27a3%203%200%200%201-3%203H20a3%203%200%200%201-3-3V15a3%203%200%200%201%203-3z%22%20fill%3D%22%23fff%22/%3E%3Cpath%20d%3D%22M37%2012v8a3%203%200%200%200%203%203h8z%22%20fill%3D%22%23d4d4d1%22/%3E%3Crect%20x%3D%2223%22%20y%3D%2230%22%20width%3D%2218%22%20height%3D%223.2%22%20rx%3D%221.6%22%20fill%3D%22%2337352f%22/%3E%3Crect%20x%3D%2223%22%20y%3D%2237%22%20width%3D%2218%22%20height%3D%223.2%22%20rx%3D%221.6%22%20fill%3D%22%239b9a97%22/%3E%3Crect%20x%3D%2223%22%20y%3D%2244%22%20width%3D%2211%22%20height%3D%223.2%22%20rx%3D%221.6%22%20fill%3D%22%239b9a97%22/%3E%3C/svg%3E%0A" alt=""><span class="grow">Visor de notas</span><button id="bSideClose" title="Ocultar barra lateral"><svg viewBox="0 0 16 16"><path d="M9.5 4l-4 4 4 4"/><path d="M13 4l-4 4 4 4" opacity=".5"/></svg></button></div>
   <div class="nav">
-    <button class="item" id="bOpen"><svg viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></svg>Abrir archivos<span class="k">Ctrl O</span></button>
+    <button class="item" id="bOpen"><svg viewBox="0 0 16 16"><path d="M2.5 3.5h4a1.5 1.5 0 011.5 1.5v8a1.2 1.2 0 00-1.2-1.2H2.5z"/><path d="M13.5 3.5h-4A1.5 1.5 0 008 5v8a1.2 1.2 0 011.2-1.2h4.3z"/></svg>Lector de archivos<span class="k">Ctrl O</span></button>
     <button class="item" id="bPaste"><svg viewBox="0 0 16 16"><rect x="3.5" y="3" width="9" height="11" rx="1.5"/><path d="M6 3V2.2h4V3"/><path d="M6 7h4M6 9.5h4"/></svg>Pegar texto</button>
     <button class="item" id="bWrite"><svg viewBox="0 0 16 16"><path d="M10.5 2.8l2.7 2.7-7.4 7.4H3.1v-2.7z"/><path d="M9 4.3l2.7 2.7"/></svg>Escribir y escuchar<span class="k">Ctrl E</span></button>
   </div>
@@ -691,19 +701,27 @@ function addText(name,text){
 /* ============ Render ============ */
 function renderFiles(){
   $('#bWrite').classList.toggle('on',view==='write'&&!wDoc);
+  $('#bOpen').classList.toggle('on',view==='doc'&&!cur);
   if(typeof renderCloud==='function')try{renderCloud()}catch(e){}
   const el=$('#files');
   if(!files.length){el.innerHTML='<div class="note" style="padding:3px 8px">Sin archivos abiertos</div>';return}
   el.innerHTML=files.map(f=>`<div class="file${view==='doc'&&cur&&f.id===cur.id?' on':''}" data-id="${f.id}" title="${esc(f.name)} · ${fmtSize(f.size)}"><span class="ic">${ICON(extOf(f.name))}</span><span class="nm">${esc(baseName(f.name))}</span><button class="x" data-close="${f.id}" title="Cerrar"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>`).join('');
 }
 function welcome(){
-  return `<div class="page"><div class="page-icon">📄</div><h1 class="page-title">Visor de notas</h1>
+  const recent=files.slice().reverse().slice(0,8);
+  return `<div class="page"><div class="page-icon">📖</div><h1 class="page-title">Lector de archivos</h1>
   <p class="empty-desc">Abre archivos Markdown o de texto para leerlos limpios y ordenados.</p>
-  <div class="actions">
-    <button class="act" data-act="open"><svg viewBox="0 0 16 16"><path d="M2.5 5V3.5a1 1 0 011-1h3l1.5 1.5h4.5a1 1 0 011 1V5"/><path d="M2 6h12l-1 7H3z"/></svg>Abrir archivos<span class="k">Ctrl O</span></button>
-    <button class="act" data-act="paste"><svg viewBox="0 0 16 16"><rect x="3.5" y="3" width="9" height="11" rx="1.5"/><path d="M6 3V2.2h4V3"/><path d="M6 7h4M6 9.5h4"/></svg>Pegar texto<span class="k">Ctrl V</span></button>
+  <div class="dropzone" id="dz" tabindex="0" role="button" title="Haz clic para elegir archivos">
+    <svg viewBox="0 0 16 16"><path d="M8 10.5V2.5M5 5.5l3-3 3 3"/><path d="M2.5 10v2.5a1 1 0 001 1h9a1 1 0 001-1V10"/></svg>
+    <b>Suelta aquí tus archivos</b>
+    <span>o haz clic para elegirlos · también puedes copiar el archivo en tu carpeta y pegarlo aquí con <kbd>Ctrl V</kbd></span>
+    <small>.md · .txt · .csv · .json · .log y más · Funciona sin internet</small>
   </div>
-  <div class="hint">También puedes arrastrar archivos a cualquier parte de esta ventana.<br><span style="font-size:12.5px">.md · .txt · .csv · .json · .log y más · Funciona sin internet</span></div></div>`;
+  <div class="actions" style="border-top:0;padding-top:14px">
+    <button class="act" data-act="paste"><svg viewBox="0 0 16 16"><rect x="3.5" y="3" width="9" height="11" rx="1.5"/><path d="M6 3V2.2h4V3"/><path d="M6 7h4M6 9.5h4"/></svg>Pegar texto copiado<span class="k">Ctrl V</span></button>
+  </div>
+  ${recent.length?`<div class="recent"><div class="recent-t">Abiertos recientemente</div>${recent.map(f=>`<button class="act" data-open="${f.id}"><span style="width:18px;text-align:center">${ICON(extOf(f.name))}</span>${esc(baseName(f.name))}<span class="k">${fmtSize(f.size)}</span></button>`).join('')}</div>`:''}
+  </div>`;
 }
 function renderDoc(keepScroll){
   if(view==='write'){renderWrite();return}
@@ -711,7 +729,7 @@ function renderDoc(keepScroll){
   const main=$('#main'),viewEl=$('#view'),top=main.scrollTop;
   hits=[];hi=-1;
   const crumb=$('#crumb');
-  if(!cur){viewEl.innerHTML=welcome();crumb.innerHTML='<span>📄</span><span>Visor de notas</span>';document.title='Visor de notas';renderTOC();updateMode();return}
+  if(!cur){viewEl.innerHTML=welcome();crumb.innerHTML='<span>📖</span><span>Lector de archivos</span>';document.title='Lector de archivos · Visor de notas';renderTOC();updateMode();return}
   const e=extOf(cur.name);let body=null,props='',title=baseName(cur.name);
   if(cur.mode==='fmt'){
     if(e==='json')body=jsonView(cur.text);
@@ -777,7 +795,8 @@ $('#qNext').onclick=()=>go(1);$('#qPrev').onclick=()=>go(-1);
 
 /* ============ Eventos ============ */
 const sideOff=()=>{if(innerWidth<=860){prefs.side=false;applyPrefs()}};
-$('#bOpen').onclick=()=>{$('#fi').click();sideOff()};
+$('#bOpen').onclick=()=>{openReader();sideOff()};
+function openReader(){if(view==='write')flushEditor();if(tts.active)ttsStop(true);setView('doc');cur=null;persist();renderAll(true)}
 $('#fi').onchange=e=>{loadFiles(e.target.files);e.target.value=''};
 $('#files').onclick=e=>{
   const c=e.target.closest('[data-close]');
@@ -806,7 +825,9 @@ function copy(t,msg){(navigator.clipboard?navigator.clipboard.writeText(t):Promi
 
 $('#view').addEventListener('click',e=>{
   const act=e.target.closest('[data-act]');
-  if(act){act.dataset.act==='open'?$('#fi').click():openPaste('');return}
+  if(act&&act.dataset.act){act.dataset.act==='open'?$('#fi').click():openPaste('');return}
+  if(e.target.closest('#dz')){$('#fi').click();return}
+  const ro=e.target.closest('[data-open]');if(ro){cur=files.find(x=>x.id===ro.dataset.open);persist();renderAll(true);return}
   const cp=e.target.closest('.copy');
   if(cp){copy(cp.closest('.codewrap').querySelector('code').textContent,'Código copiado');cp.textContent='Copiado';setTimeout(()=>cp.textContent='Copiar',1500);return}
   const wk=e.target.closest('.wiki');
@@ -828,10 +849,10 @@ let spyT;$('#main').addEventListener('scroll',()=>{
 $('#totop').onclick=()=>{$('#main').scrollTop=0};
 
 let dragN=0;
-addEventListener('dragenter',e=>{if([...e.dataTransfer.types].includes('Files')){dragN++;$('#ov').classList.add('show')}});
-addEventListener('dragleave',()=>{dragN=Math.max(0,dragN-1);if(!dragN)$('#ov').classList.remove('show')});
+addEventListener('dragenter',e=>{if([...e.dataTransfer.types].includes('Files')){dragN++;const dz=$('#dz');if(dz)dz.classList.add('over');else $('#ov').classList.add('show')}});
+addEventListener('dragleave',()=>{dragN=Math.max(0,dragN-1);if(!dragN){$('#ov').classList.remove('show');const dz=$('#dz');if(dz)dz.classList.remove('over')}});
 addEventListener('dragover',e=>e.preventDefault());
-addEventListener('drop',e=>{e.preventDefault();dragN=0;$('#ov').classList.remove('show');if(e.dataTransfer.files.length)loadFiles(e.dataTransfer.files)});
+addEventListener('drop',e=>{e.preventDefault();dragN=0;$('#ov').classList.remove('show');{const dz=$('#dz');if(dz)dz.classList.remove('over')}if(e.dataTransfer.files.length)loadFiles(e.dataTransfer.files)});
 
 const modal=$('#modal');
 function openPaste(t){modal.classList.add('show');$('#pText').value=t||'';$('#pName').value='';setTimeout(()=>(t?$('#pName'):$('#pText')).focus(),30)}
@@ -842,8 +863,10 @@ $('#pOk').onclick=()=>{const t=$('#pText').value;if(!t.trim()){toast('No hay tex
 modal.onclick=e=>{if(e.target===modal)modal.classList.remove('show')};
 addEventListener('paste',e=>{
   if(modal.classList.contains('show')||/INPUT|TEXTAREA/.test(document.activeElement.tagName)||document.activeElement.isContentEditable)return;
-  if(e.clipboardData.files&&e.clipboardData.files.length){loadFiles(e.clipboardData.files);return}
-  const t=e.clipboardData.getData('text');if(t&&t.trim())openPaste(t);
+  if(e.clipboardData.files&&e.clipboardData.files.length){e.preventDefault();loadFiles(e.clipboardData.files);return}
+  const t=e.clipboardData.getData('text');
+  if(t&&/^("?[a-zA-Z]:\\|\\\\|file:\/\/|\/)[^\n]*\.\w{1,6}"?$/.test(t.trim())){toast('El navegador recibió la ruta, no el archivo. Arrástralo aquí o haz clic en la zona para elegirlo.');return}
+  if(t&&t.trim())openPaste(t);
 });
 
 addEventListener('keydown',e=>{
