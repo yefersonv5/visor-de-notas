@@ -33,7 +33,7 @@ Las notas de **Escribir y escuchar** se pueden guardar como archivos `.md` en un
 2. En la barra lateral pulsa **Conectar carpeta de notas** y elige o crea una carpeta, por ejemplo `OneDrive/Notas`.
 3. Acepta el permiso para ver y editar archivos.
 
-Cada nota es un archivo `.md` en esa carpeta y se guarda sola mientras escribes; el botón de disquete o `Ctrl S` la guarda al instante sobre el mismo archivo (no crea copias). Desde la barra lateral puedes crear notas (＋), abrirlas, renombrarlas (clic en el título) y borrarlas (doble clic en la papelera). Por seguridad, el navegador vuelve a pedir permiso cada vez que abres el visor: pulsa **Reconectar carpeta**. Si el archivo cambia en otro equipo, el visor trae la versión nueva al volver a la pestaña.
+Cada nota es un archivo `.md` en esa carpeta y se guarda sola mientras escribes; el botón de disquete o `Ctrl S` la guarda al instante sobre el mismo archivo (no crea copias). Desde la barra lateral puedes crear notas (＋), abrirlas, renombrarlas (clic en el título) y borrarlas con doble clic en la papelera (de la lista o de la barra de la nota), lo que también borra el archivo de la carpeta. Por seguridad, el navegador vuelve a pedir permiso cada vez que abres el visor: pulsa **Reconectar carpeta**. Si el archivo cambia en otro equipo, el visor trae la versión nueva al volver a la pestaña.
 
 ### Opción alternativa: GitHub
 

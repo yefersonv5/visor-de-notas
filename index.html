@@ -986,6 +986,7 @@ function renderWrite(){
   <div class="doc w-ed" id="wEd" contenteditable="true" spellcheck="true"></div>
   <div class="reader" id="wReader" hidden></div></div>`;
   initEditor($('#wEd'));
+  {const wc=$('#wClear');if(wc)wc.title=syncOn()&&wDoc?'Borrar esta nota y su archivo (clic dos veces)':'Borrar el texto (clic dos veces)'}
   const pt=$('#pTitle');if(wDoc){pt.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#wEd').focus()}if(e.key==='Escape'){e.preventDefault();renderTitle();$('#wEd').focus()}});pt.addEventListener('blur',()=>renameNote(pt.textContent));pt.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain').replace(/\n/g,' '))})}
   fillVoices();
   $('#wRate').value=prefs.ttsRate;$('#wRateV').textContent=fmtRate(prefs.ttsRate);
@@ -1002,6 +1003,10 @@ $('#view').addEventListener('click',e=>{
   else if(id==='wSave'){saveNow()}
   else if(id==='wClear'){
     const b=e.target.closest('button');
+    if(syncOn()&&wDoc){
+      if(!b.dataset.arm){b.dataset.arm='1';b.classList.add('on');toast('Haz clic otra vez para borrar la nota «'+baseName(wDoc.name)+'» y su archivo');setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.classList.remove('on')}},2500);return}
+      delete b.dataset.arm;b.classList.remove('on');if(tts.active)ttsStop(true);deleteNote(wDoc.path);return;
+    }
     if(!edText().trim())return;
     if(!b.dataset.arm){b.dataset.arm='1';b.classList.add('on');toast('Haz clic otra vez para borrar el texto');setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.classList.remove('on')}},2500);return}
     ttsStop();persistDoc('');const t=$('#wEd');t.innerHTML='<p><br></p>';writeMeta();b.classList.remove('on');delete b.dataset.arm;t.focus();placeCaret(t.firstChild);markPlaceholder();
@@ -1450,7 +1455,7 @@ function persistDoc(md){
 }
 function flushEditor(){const ed=edEl();if(ed&&view==='write'){clearTimeout(edSaveT);persistDoc(editorToMd(ed))}}
 async function openNote(path,opts={}){
-  if(view==='write')flushEditor();
+  if(view==='write'&&!opts.noFlush)flushEditor();
   if(tts.active)ttsStop(true);
   wDoc={path,name:path.split('/').pop()};ls.set(CURK,wDoc);
   const c=cloud[path];draft=c?c.text:'';
@@ -1465,7 +1470,7 @@ async function openNote(path,opts={}){
     const ed=edEl();
     if(wDoc&&wDoc.path===path&&view==='write'&&(!ed||editorToMd(ed)===before)&&r.text!==before){draft=r.text;renderDoc(false)}
   }catch(e){
-    if(e.status===404){if(opts.migrate&&opts.migrate.trim()){persistDoc(opts.migrate);if(edEl()&&view==='write')renderDoc(false)}}
+    if(e.status===404){if(opts.migrate&&opts.migrate.trim()){persistDoc(opts.migrate);ls.set(draftKey,'');if(edEl()&&view==='write')renderDoc(false)}}
     else setSync('error',e);
   }
 }
@@ -1504,10 +1509,14 @@ async function renameNote(raw){
 }
 async function deleteNote(path){
   const c=cloud[path],it=(cloudList||[]).find(f=>f.path===path),sha=(c&&c.sha)||(it&&it.sha);
-  if(sha){if(!ready()){toast(errMsg({status:-2}));return}try{await B().del(path,sha)}catch(e){if(e.status!==404){toast('No se pudo borrar: '+errMsg(e));return}}}
+  if(sha||sync.kind==='fs'){
+    if(!ready()){if(sync.kind==='fs')await reconnectFolder();if(!ready()){toast(errMsg({status:-2}));return}}
+    clearTimeout(pushT);if(c)c.dirty=false;
+    try{await B().del(path,sha)}catch(e){if(e.status!==404){toast('No se pudo borrar: '+errMsg(e));return}}
+  }
   delete cloud[path];saveCloud();cloudList=(cloudList||[]).filter(f=>f.path!==path);
-  if(wDoc&&wDoc.path===path){wDoc=null;ls.set(CURK,null);if(view==='write'){if(!ensureDoc()){draft=ls.get(draftKey)||'';renderDoc(false)}}}
-  renderCloud();toast('Nota borrada');
+  if(wDoc&&wDoc.path===path){wDoc=null;ls.set(CURK,null);ls.set(draftKey,'');draft='';if(view==='write'){if(syncOn())openNote(notePath('Nota rápida.md'),{noFlush:true});else renderDoc(false)}}
+  renderCloud();toast('Nota borrada'+(sync&&sync.kind==='fs'?' de la carpeta':' de GitHub')+': '+path.split('/').pop());
 }
 async function refreshCurrent(){
   if(!syncOn()||!ready()||!wDoc||view!=='write')return;
